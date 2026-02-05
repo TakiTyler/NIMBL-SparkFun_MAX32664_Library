@@ -272,4 +272,112 @@ enum IDENTITY_INDEX_BYTES
     READ_ALGO_VERS = 0x07
 };
 
+class SparkFun_Bio_Sensor_Hub{
+    
+    public:
+
+    // variables
+    uint8_t bpmArr[MAXFAST_ARRAY_SIZE]{};
+    uint8_t bpmArrTwo[MAXFAST_ARRAY_SIZE + MAXFAST_EXTENDED_DATA]{};
+    uint8_t senArr[MAX30101_LED_ARRAY]{};
+    uint8_t bpmSenArr[MAXFAST_ARRAY_SIZE + MAX30101_LED_ARRAY]{};
+    uint8_t bpmSenArrTwo[MAXFAST_ARRAY_SIZE + MAXFAST_EXTENDED_DATA + MAX30101_LED_ARRAY]{};
+
+    // constructor
+    SparkFun_Bio_Sensor_Hub(int resetPin = -1, int mfioPin = -1, uint8_t address = 0x55);
+
+    // functions
+
+    uint8_t begin(uint16_t resetPin, uint16_t mfioPin);
+    uint8_t beginBootloader(uint16_t resetPin, uint16_t mfioPin);
+    uint8_t readSensorHubStatus();
+    uint8_t setOperatingMode(uint8_t);
+    uint8_t configBpm(uint8_t);
+    uint8_t configSensor();
+    uint8_t configSensorBpm(uint8_t);
+    bioData readBpm();
+    bioData readSensor();
+    bioData readSensorBpm();
+    uint8_t setPulseWidth(uint16_t);
+    uint16_t readPulseWidth();
+    uint8_t setSampleRate(uint16_t);
+    uint16_t readSampleRate();
+    uint8_t setAdcRange(uint16_t);
+    uint16_t readAdcRange();
+    uint8_t getMcuType();
+    int32_t getBootloaderInf();
+    uint8_t max30101Control(uint8_t);
+    uint8_t readMAX30101State();
+    uint8_t accelControl(uint8_t);
+    uint8_t setOutputMode(uint8_t);
+    uint8_t setFifoThreshold(uint8_t);
+    uint8_t numSamplesOutFifo();
+    uint8_t *getDataOutFifo(uint8_t data[]);
+    uint8_t numSamplesExternalSensor();
+    void writeRegisterMAX30101(uint8_t, uint8_t);
+    void writeRegisterAccel(uint8_t, uint8_t);
+    uint8_t readRegisterMAX30101(uint8_t);
+    uint8_t readRegisterAccel(uint8_t);
+    sensorAttr getAfeAttributesMAX30101();
+    sensorAttr getAfeAttributesAccelerometer();
+    uint8_t dumpRegisterMAX30101(uint8_t regArray[]);
+    uint8_t dumpRegisterAccelerometer(uint8_t, uint8_t regArray[]);
+    uint8_t setAlgoRange(uint8_t);
+    uint8_t setAlgoStepSize(uint8_t);
+    uint8_t setAlgoSensitivity(uint8_t);
+    uint8_t setAlgoSamples(uint8_t);
+    uint8_t setMaximFastCoef(int32_t, int32_t, int32_t);
+    uint8_t readAlgoRange();
+    uint8_t readAlgoStepSize();
+    uint8_t readAlgoSensitivity();
+    uint8_t readAlgoSamples();
+    uint8_t readMaximFastCoef(int32_t coefArr[3]);
+    uint8_t agcAlgoControl(uint8_t);
+    uint8_t maximFastAlgoControl(uint8_t);
+    bool setNumPages(uint8_t);
+    bool eraseFlash();
+    version readBootloaderVers();
+    version readSensorHubVersion();
+    version readAlgorithmVersion();
+    uint8_t isPatientBPMedication(uint8_t);
+    uint8_t isPatientBPMedication();
+    uint8_t writeDiastolicVals(uint8_t, uint8_t, uint8_t);
+    uint8_t readDiastolicVals(uint8_t userArray[]);
+    uint8_t writeSystolicVals(uint8_t, uint8_t, uint8_t);
+    uint8_t readSystolicVals(uint8_t userArray[]);
+    uint8_t writeBPTAlgoData(uint8_t bptCalibData[]);
+    uint8_t readBPTAlgoData(uint8_t userArray[]);
+    uint8_t isPatientResting(uint8_t);
+    uint8_t isPatientResting();
+    uint8_t writeSP02AlgoCoef(int32_t, int32_t, int32_t);
+    uint8_t readSP02AlgoCoef(int32_t userArray[]);
+
+    private:
+
+    // variables
+
+    int _resetPin;
+    int _mfioPin;
+    uint8_t _address;
+    uint32_t _writeCoefArr[3]{};
+    uint8_t _userSelectedMode;
+    uint8_t _sampleRate = 100;
+
+    // functions
+
+    uint8_t enableWrite(uint8_t, uint8_t, uint8_t);
+    uint8_t writeByte(uint8_t, uint8_t, uint8_t);
+    uint8_t writeByte(uint8_t, uint8_t, uint8_t, uint8_t);
+    uint8_t writeByte(uint8_t, uint8_t, uint8_t, uint16_t);
+    uint8_t writeLongBytes(uint8_t, uint8_t, uint8_t, int32_t _writeVal[], const size_t);
+    uint8_t writeBytes(uint8_t, uint8_t, uint8_t, uint8_t _writeVal[], const size_t);
+    uint8_t readByte(uint8_t, uint8_t);
+    uint8_t readByte(uint8_t, uint8_t, uint8_t);
+    uint16_t readIntByte(uint8_t, uint8_t, uint8_t);
+    uint8_t readMultipleBytes(uint8_t, uint8_t, uint8_t, const size_t, int32_t userArray[]);
+    uint8_t readMultipleBytes(uint8_t, uint8_t, uint8_t, const size_t, uint8_t userArray[]);
+    uint8_t readFillArray(uint8_t, uint8_t, uint8_t, uint8_t array[]);
+
+};
+
 #endif // _SPARKFUN_BIO_SENSOR_HUB_LIBRARY_H_
