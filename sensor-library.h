@@ -295,8 +295,10 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t beginBootloader();
     // checks the status of FIFO
     uint8_t readSensorHubStatus();
-    uint8_t setOperatingMode(uint8_t);
-    uint8_t configBpm(uint8_t);
+    // switch the device state & verify
+    uint8_t setOperatingMode(uint8_t selection);
+    // sets very basic settings to get sensor & biometric data
+    uint8_t configBpm(uint8_t mode);
     uint8_t configSensor();
     uint8_t configSensorBpm(uint8_t);
     bioData readBpm();
@@ -310,11 +312,11 @@ class SparkFun_Bio_Sensor_Hub{
     uint16_t readAdcRange();
     uint8_t getMcuType();
     int32_t getBootloaderInf();
-    uint8_t max30101Control(uint8_t);
+    uint8_t max30101Control(uint8_t enable);
     uint8_t readMAX30101State();
     uint8_t accelControl(uint8_t);
-    uint8_t setOutputMode(uint8_t);
-    uint8_t setFifoThreshold(uint8_t);
+    uint8_t setOutputMode(uint8_t outputType);
+    uint8_t setFifoThreshold(uint8_t threshold);
     uint8_t numSamplesOutFifo();
     uint8_t *getDataOutFifo(uint8_t data[]);
     uint8_t numSamplesExternalSensor();
@@ -336,8 +338,8 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t readAlgoSensitivity();
     uint8_t readAlgoSamples();
     uint8_t readMaximFastCoef(int32_t coefArr[3]);
-    uint8_t agcAlgoControl(uint8_t);
-    uint8_t maximFastAlgoControl(uint8_t);
+    uint8_t agcAlgoControl(uint8_t enable);
+    uint8_t maximFastAlgoControl(uint8_t mode);
     bool setNumPages(uint8_t);
     bool eraseFlash();
     version readBootloaderVers();
@@ -377,13 +379,16 @@ class SparkFun_Bio_Sensor_Hub{
     // functions
 
     uint8_t enableWrite(uint8_t, uint8_t, uint8_t);
-    uint8_t writeByte(uint8_t, uint8_t, uint8_t);
+    // writes 3 bytes
+    uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);
     uint8_t writeByte(uint8_t, uint8_t, uint8_t, uint8_t);
     uint8_t writeByte(uint8_t, uint8_t, uint8_t, uint16_t);
     uint8_t writeLongBytes(uint8_t, uint8_t, uint8_t, int32_t _writeVal[], const size_t);
     uint8_t writeBytes(uint8_t, uint8_t, uint8_t, uint8_t _writeVal[], const size_t);
+    // reads 2 bytes
     uint8_t readByte(uint8_t _familyByte, uint8_t _indexByte);
-    uint8_t readByte(uint8_t, uint8_t, uint8_t);
+    // reads 3 bytes
+    uint8_t readByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);
     uint16_t readIntByte(uint8_t, uint8_t, uint8_t);
     uint8_t readMultipleBytes(uint8_t, uint8_t, uint8_t, const size_t, int32_t userArray[]);
     uint8_t readMultipleBytes(uint8_t, uint8_t, uint8_t, const size_t, uint8_t userArray[]);

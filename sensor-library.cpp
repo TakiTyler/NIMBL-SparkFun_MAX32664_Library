@@ -4,7 +4,7 @@
 #include "sensor-library.h"
 
 // setting the reset & mfio pins
-SparkFun_Bio_Sensor_Hub::SparkFun_Bio_Sensor_Hub(uint8_t* resetPort, uint8_t* resetOut, uint16_t resetBit, uint8_t* mfioPort, uint8_t* mfioOut, uint16_t mfioBit, uint8_t address = 0x55){
+SparkFun_Bio_Sensor_Hub::SparkFun_Bio_Sensor_Hub(uint8_t* resetPort, uint8_t* resetOut, uint16_t resetBit, uint8_t* mfioPort, uint8_t* mfioOut, uint16_t mfioBit, uint8_t address){
 
     // set the necessary pins
     _resetPort = resetPort;
@@ -85,6 +85,126 @@ uint8_t SparkFun_Bio_Sensor_Hub::readSensorHubStatus(){
     return responseByte;
 }
 
+uint8_t SparkFun_Bio_Sensor_Hub::setOperatingMode(uint8_t selection){
+
+    // parameter validation (must be 0x00, 0x02, or 0x08)
+    if(selection != EXIT_BOOTLOADER && selection != SFE_BIO_RESET && selection != ENTER_BOOTLOADER){
+        return INCORR_PARAM; // 0xEE
+    }
+
+    // send mode change
+    uint8_t statusByte = writeByte(SET_DEVICE_MODE, 0x00, selection);
+    if(statusByte != SFE_BIO_SUCCESS){
+        return statusByte;
+    }
+
+    // wait for a verification
+    __delay_cycles(100000);         // 100ms delay @ 1MHz
+
+    // READ_DEVICE_MODE = 0x02
+    uint8_t responseByte = readByte(READ_DEVICE_MODE, 0x00);
+    return responseByte;
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::configBpm(uint8_t mode){
+
+    if(mode != MODE_ONE && mode != MODE_TWO){
+        return 0xEE;
+    }
+
+    uint8_t status;
+
+    status = setOutputMode(ALGO_DATA);
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    status = setFifoThreshold(0x01);        // one sample before interrupt is fired
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    status = agcAlgoControl(ENABLE);        // one sample before interrupt is fired
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    status = max30101Control(ENABLE);
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    status = maximFastAlgoControl(mode);
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    _userSelectedMode = mode;
+    _sampleRate = readAlgoSamples();
+
+    __delay_cycles(1000000);                // 1 second delay @ 1MHz
+    return SFE_BIO_SUCCESS;
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::max30101Control(uint8_t enable){
+    return writeByte(ENABLE_SENSOR, 0x03, enable);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::setOutputMode(uint8_t outputType){
+    return writeByte(OUTPUT_MODE, 0x00, outputType);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::setFifoThreshold(uint8_t threshold){
+    return writeByte(OUTPUT_MODE, 0x01, threshold);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readAlgoSamples(){
+    return readByte(READ_ALGORITHM_CONFIG, 0x00, 0x03);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::agcAlgoControl(uint8_t enable){
+    return writeByte(ENABLE_ALGORITHM, 0x00, enable);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::maximFastAlgoControl(uint8_t mode){
+    return writeByte(ENABLE_ALGORITHM, 0x02, mode);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte){
+    uint8_t statusByte = 0xFF;
+
+    // write the command
+    UCB0I2CSA = this->_address;
+    UCB0CTLW0 |= UCTR | UCTXSTT;
+
+    while(!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _familyByte;
+
+    while(!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _indexByte;
+
+    while(!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _writeByte;
+
+    while(UCB0CTLW0 & UCTXSTT);
+    UCB0CTLW0 |= UCTXSTP;
+    while(UCB0CTLW0 & UCTXSTP);
+
+    __delay_cycles(2000);           // 2ms delay @ 1MHz
+
+    // read back the single status byte
+    UCB0CTLW0 &= ~UCTR;
+    UCB0CTLW0 |= UCTXSTT;
+    UCB0CTLW0 |= UCTXSTP;           // set stop
+
+    while(!(UCB0IFG & UCRXIFG));
+    statusByte = UCB0RXBUF;
+
+    while(UCB0CTLW0 & UCTXSTP);
+
+    return statusByte;
+}
+
 uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByte){
 
     uint8_t returnByte = 0xFF;
@@ -128,8 +248,54 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
     }
 
     return returnByte;
+}
 
+// similar to above, but we just add the write
+uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte){
+    uint8_t statusByte = 0xFF;
+    uint8_t returnByte = 0x00;
 
+    // write the three bytes
+    UCB0I2CSA = this->_address;
+    UCB0CTLW0 = UCTR | UCTXSTT;
+
+    while(!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _familyByte;
+
+    while(!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _indexByte;
+
+    while(!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _writeByte;
+
+    while(UCB0CTLW0 & UCTXSTT);     // wait for start bit to clear
+    UCB0CTLW0 |= UCTXSTP;           // generate stop condition
+    while(UCB0CTLW0 & UCTXSTP);     // wait for stop to finish
+
+    __delay_cycles(2000);           // 2ms delay @ 1MHz
+
+    // read the status + data
+    UCB0CTLW0 &= ~UCTR;             // receiver mode
+    UCB0CTLW0 |= UCTXSTT;           // start condition
+
+    // read status byte
+    while(!(UCB0IFG & UCTXIFG));    // wait until interrupt
+    statusByte = UCB0RXBUF;
+
+    // read return byte
+    UCB0CTLW0 |= UCTXSTP;           // set stop before reading the last byte
+    while(!(UCB0IFG & UCTXIFG));    // wait until interrupt
+    returnByte = UCB0RXBUF;
+
+    while(UCB0CTLW0 & UCTXSTP);     // wait for stop to finish
+
+    // check if the statusByte isn't 0x00 to return the error
+
+    if(statusByte != 0x00){
+        return statusByte;
+    }
+
+    return returnByte;
 }
 
 // creating UART for debugging since printing doesn't seem to work
