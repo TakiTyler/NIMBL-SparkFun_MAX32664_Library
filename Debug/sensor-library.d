@@ -28,6 +28,9 @@ sensor-library.obj: C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/in
 sensor-library.obj: C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/sys/stdint.h
 sensor-library.obj: C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/machine/_stdint.h
 sensor-library.obj: C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/sys/_stdint.h
+sensor-library.obj: C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/libcxx/stddef.h
+sensor-library.obj: C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/stddef.h
+sensor-library.obj: C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/libcxx/__nullptr
 
 ../sensor-library.cpp:
 
@@ -84,4 +87,10 @@ C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/sys/stdint.h:
 C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/machine/_stdint.h:
 
 C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/sys/_stdint.h:
+
+C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/libcxx/stddef.h:
+
+C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/stddef.h:
+
+C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include/libcxx/__nullptr:
 

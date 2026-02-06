@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stddef.h>
 
 // the MAX32664 is what we talk to, the MAX30101 is doing the calcs for HR & Oxy
 
@@ -284,12 +285,15 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t bpmSenArrTwo[MAXFAST_ARRAY_SIZE + MAXFAST_EXTENDED_DATA + MAX30101_LED_ARRAY]{};
 
     // constructor
-    SparkFun_Bio_Sensor_Hub(int resetPin = -1, int mfioPin = -1, uint8_t address = 0x55);
+    SparkFun_Bio_Sensor_Hub(uint8_t* resetPort, uint8_t* resetOut, uint16_t resetBit, uint8_t* mfioPort, uint8_t* mfioOut, uint16_t mfioBit, uint8_t address = 0x55);
 
-    // functions
+    //// functions ////
 
-    uint8_t begin(uint16_t resetPin, uint16_t mfioPin);
-    uint8_t beginBootloader(uint16_t resetPin, uint16_t mfioPin);
+    // initializes the sensor, placing the max32664 into application mode
+    uint8_t begin();
+    // places the max32664 into bootloader mode
+    uint8_t beginBootloader();
+    // checks the status of FIFO
     uint8_t readSensorHubStatus();
     uint8_t setOperatingMode(uint8_t);
     uint8_t configBpm(uint8_t);
@@ -356,9 +360,16 @@ class SparkFun_Bio_Sensor_Hub{
 
     // variables
 
-    int _resetPin;
-    int _mfioPin;
+    volatile uint8_t* _resetPort;     // port direction register (ex: P1DIR)
+    volatile uint8_t* _resetOut;      // port output register (ex: P1OUT)
+    uint16_t _resetBit;      // the specific bit (ex: BIT4)
+
+    volatile uint8_t* _mfioPort;
+    volatile uint8_t* _mfioOut;
+    uint16_t _mfioBit;
+
     uint8_t _address;
+
     uint32_t _writeCoefArr[3]{};
     uint8_t _userSelectedMode;
     uint8_t _sampleRate = 100;
@@ -371,7 +382,7 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t writeByte(uint8_t, uint8_t, uint8_t, uint16_t);
     uint8_t writeLongBytes(uint8_t, uint8_t, uint8_t, int32_t _writeVal[], const size_t);
     uint8_t writeBytes(uint8_t, uint8_t, uint8_t, uint8_t _writeVal[], const size_t);
-    uint8_t readByte(uint8_t, uint8_t);
+    uint8_t readByte(uint8_t _familyByte, uint8_t _indexByte);
     uint8_t readByte(uint8_t, uint8_t, uint8_t);
     uint16_t readIntByte(uint8_t, uint8_t, uint8_t);
     uint8_t readMultipleBytes(uint8_t, uint8_t, uint8_t, const size_t, int32_t userArray[]);
