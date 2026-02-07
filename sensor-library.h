@@ -400,16 +400,22 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);
     // writes 4 bytes (last one being uint8_t)
     uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, uint8_t _writeByteTwo);
-    uint8_t writeByte(uint8_t, uint8_t, uint8_t, uint16_t);
-    uint8_t writeLongBytes(uint8_t, uint8_t, uint8_t, int32_t _writeVal[], const size_t);
-    uint8_t writeBytes(uint8_t, uint8_t, uint8_t, uint8_t _writeVal[], const size_t);
+    // writes 4 bytes (last one being uint16_t)
+    uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, uint16_t _val);
+    // used for Sp02 coefficients
+    uint8_t writeLongBytes(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, int32_t _writeVal[], const size_t _len);
+    // 8-bit version of previous
+    uint8_t writeBytes(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, uint8_t _writeVal[], const size_t _len);
     // reads 2 bytes
     uint8_t readByte(uint8_t _familyByte, uint8_t _indexByte);
     // reads 3 bytes
     uint8_t readByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);
-    uint16_t readIntByte(uint8_t, uint8_t, uint8_t);
-    uint8_t readMultipleBytes(uint8_t, uint8_t, uint8_t, const size_t, int32_t userArray[]);
-    uint8_t readMultipleBytes(uint8_t, uint8_t, uint8_t, const size_t, uint8_t userArray[]);
+    // used when a register holds a 16-bit value
+    uint16_t readIntByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);
+    // reads a variable number of 8-bit bytes into a buffer
+    uint8_t readMultipleBytes(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, const size_t _len, uint8_t userArray[]);
+    // reads a variable number of 32-bit bytes into a buffer, designed for MaximFast Algorithm Coefficients
+    uint8_t readMultipleBytes(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, const size_t _len, int32_t userArray[]);
     // reads array & fills the array passed through
     uint8_t readFillArray(uint8_t _familyByte, uint8_t _indexByte, uint8_t arraySize, uint8_t array[]);
 
