@@ -43,6 +43,7 @@ const uint8_t BIO_ADDRESS = 0x55;   // this should be fine...
 struct bioData{
     uint32_t irLed;
     uint32_t redLed;
+    // uint32_t greenLed;
     uint16_t heartRate; // Least Significant Bit = 0.1bpm
     uint8_t confidence; // 0 -> 100% LSB = 1%
     uint16_t oxygen;    // 0 -> 100% LSB = 1%
@@ -305,9 +306,13 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t configSensorBpm(uint8_t mode);
     // main logic to read the bpm of user
     bioData readBpm();
+    // retrieving raw LED data
     bioData readSensor();
+    // combines the two above functions
     bioData readSensorBpm();
-    uint8_t setPulseWidth(uint16_t);
+    // modified the pulse width of the MAX30101 LEDs (all are set to the same width)
+    uint8_t setPulseWidth(uint16_t width);
+    // reads the pulse width of MAX30101 LEDs
     uint16_t readPulseWidth();
     uint8_t setSampleRate(uint16_t);
     uint16_t readSampleRate();

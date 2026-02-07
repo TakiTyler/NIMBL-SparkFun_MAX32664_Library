@@ -1,7 +1,7 @@
 ******************************************************************************
                   MSP430 Linker PC v21.6.1                     
 ******************************************************************************
->> Linked Fri Feb  6 23:21:44 2026
+>> Linked Sat Feb  7 16:02:33 2026
 
 OUTPUT FILE NAME:   <nimbl_sparkfun_sensor_library.out>
 ENTRY POINT SYMBOL: "_c_int00_noinit_noargs_mpu"  address: 00008048
