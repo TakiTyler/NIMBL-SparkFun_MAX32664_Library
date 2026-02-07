@@ -146,8 +146,149 @@ uint8_t SparkFun_Bio_Sensor_Hub::configBpm(uint8_t mode){
     return SFE_BIO_SUCCESS;
 }
 
+uint8_t SparkFun_Bio_Sensor_Hub::configSensor(){
+    uint8_t status;
+
+    status = setOutputMode(SENSOR_DATA);
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    status = setFifoThreshold(0x01);
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    status = max30101Control(ENABLE);
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    status = maximFastAlgoControl(MODE_ONE);
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    __delay_cycles(1000000);                // 1 second delay @ 1MHz
+    return SFE_BIO_SUCCESS;
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::configSensorBpm(uint8_t mode){
+
+    if(mode != MODE_ONE && mode != MODE_TWO){
+        return 0xEE;
+    }
+
+    uint8_t status;
+
+    status = setOutputMode(SENSOR_AND_ALGORITHM);
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    status = setFifoThreshold(0x01);        // one sample before interrupt is fired
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    status = max30101Control(ENABLE);
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    status = maximFastAlgoControl(mode);
+    if(status != SFE_BIO_SUCCESS){
+        return status;
+    }
+
+    _userSelectedMode = mode;
+    _sampleRate = readAlgoSamples();
+
+    __delay_cycles(1000000);                // 1 second delay @ 1MHz
+    return SFE_BIO_SUCCESS;
+}
+
+bioData SparkFun_Bio_Sensor_Hub::readBpm(){
+    bioData libBpm = {0};
+    uint8_t status = readSensorHubStatus();
+
+    // if we get a communication error
+    if(status == 1){
+        libBpm.heartRate = 0;
+        libBpm.confidence = 0;
+        libBpm.oxygen = 0;
+        return libBpm;
+    }
+
+    numSamplesOutFifo();
+
+    if(_userSelectedMode == MODE_ONE){
+        status = readFillArray(READ_DATA_OUTPUT, READ_DATA, MAXFAST_ARRAY_SIZE, bpmArr);
+        if(status != SFE_BIO_SUCCESS){
+            return libBpm;
+        }
+
+        // heart rate formatting
+        libBpm.heartRate = (uint16_t(bpmArr[0]) << 8) | bpmArr[1];
+        libBpm.heartRate /= 10;
+
+        // confidence formatting
+        libBpm.confidence = bpmArr[2];
+
+        // blood oxygen level formatting
+        libBpm.oxygen = (uint16_t(bpmArr[3]) << 8) | bpmArr[4];
+        libBpm.oxygen /= 10;
+
+        // "machine state" - has a finger been detected?
+        libBpm.status = bpmArr[5];
+
+        return libBpm;
+    }
+    else if(_userSelectedMode == MODE_TWO){
+        status = readFillArray(READ_DATA_OUTPUT, READ_DATA, MAXFAST_ARRAY_SIZE + MAXFAST_EXTENDED_DATA, bpmArrTwo);
+        if(status != SFE_BIO_SUCCESS){
+            return libBpm;
+        }
+
+        // heart rate formatting
+        libBpm.heartRate = (uint16_t(bpmArrTwo[0]) << 8) | bpmArrTwo[1];
+        libBpm.heartRate /= 10;
+
+        // confidence formatting
+        libBpm.confidence = bpmArrTwo[2];
+
+        // blood oxygen level formatting
+        libBpm.oxygen = (uint16_t(bpmArrTwo[3]) << 8) | bpmArrTwo[4];
+        libBpm.oxygen /= 10;
+
+        // "machine state" - has a finger been detected?
+        libBpm.status = bpmArrTwo[5];
+
+        // Sp02 r value formatting
+        uint16_t tempVal = (uint16_t(bpmArrTwo[6]) << 8) | bpmArrTwo[7];
+        libBpm.rValue = tempVal;
+        libBpm.rValue /= 10.0;
+
+        // extended machine state formatting
+        libBpm.extStatus = bpmArrTwo[8];
+
+        // two additional bytes of data were requested, but not implemented
+        return libBpm;
+    }
+
+    return libBpm;
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::getMcuType(){
+    return readByte(IDENTITY, READ_MCU_TYPE, NO_WRITE);
+}
+
 uint8_t SparkFun_Bio_Sensor_Hub::max30101Control(uint8_t enable){
     return writeByte(ENABLE_SENSOR, 0x03, enable);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readMAX30101State(){
+    return readByte(READ_SENSOR_MODE, READ_ENABLE_MAX30101);
 }
 
 uint8_t SparkFun_Bio_Sensor_Hub::setOutputMode(uint8_t outputType){
@@ -156,6 +297,32 @@ uint8_t SparkFun_Bio_Sensor_Hub::setOutputMode(uint8_t outputType){
 
 uint8_t SparkFun_Bio_Sensor_Hub::setFifoThreshold(uint8_t threshold){
     return writeByte(OUTPUT_MODE, 0x01, threshold);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::numSamplesOutFifo(){
+    return readByte(READ_DATA_OUTPUT, NUM_SAMPLES);
+}
+
+uint8_t *SparkFun_Bio_Sensor_Hub::getDataOutFifo(uint8_t data[]){
+    uint8_t samples = numSamplesOutFifo();
+    readFillArray(READ_DATA_OUTPUT, READ_DATA, samples, data);
+    return data;
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::numSamplesExternalSensor(){
+    return readByte(READ_DATA_INPUT, SAMPLE_SIZE, WRITE_ACCELEROMETER);
+}
+
+void SparkFun_Bio_Sensor_Hub::writeRegisterMAX30101(uint8_t regAddr, uint8_t regVal){
+    writeByte(WRITE_REGISTER, WRITE_MAX30101, regAddr, regVal);
+}
+
+void SparkFun_Bio_Sensor_Hub::writeRegisterAccel(uint8_t regAddr, uint8_t regVal){
+    writeByte(WRITE_REGISTER, WRITE_ACCELEROMETER, regAddr, regVal);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readRegisterMAX30101(uint8_t regAddr){
+    return readByte(READ_REGISTER, READ_MAX30101, regAddr);
 }
 
 uint8_t SparkFun_Bio_Sensor_Hub::readAlgoSamples(){
@@ -193,6 +360,44 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
     __delay_cycles(2000);           // 2ms delay @ 1MHz
 
     // read back the single status byte
+    UCB0CTLW0 &= ~UCTR;
+    UCB0CTLW0 |= UCTXSTT;
+    UCB0CTLW0 |= UCTXSTP;           // set stop
+
+    while(!(UCB0IFG & UCRXIFG));
+    statusByte = UCB0RXBUF;
+
+    while(UCB0CTLW0 & UCTXSTP);
+
+    return statusByte;
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, uint8_t _writeByteTwo){
+    uint8_t statusByte = 0xFF;
+
+    // write sequence: family + index + data1 + data2
+    UCB0I2CSA = this->_address;
+    UCB0CTLW0 |= UCTR | UCTXSTT;
+
+    while (!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _familyByte;
+
+    while (!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _indexByte;
+
+    while (!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _writeByte;
+
+    while (!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _writeByteTwo;
+
+    while (UCB0CTLW0 & UCTXSTT);
+    UCB0CTLW0 |= UCTXSTP;
+    while (UCB0CTLW0 & UCTXSTP);
+
+    __delay_cycles(2000);           // 2ms delay @ 1MHz
+
+    // read status bytes
     UCB0CTLW0 &= ~UCTR;
     UCB0CTLW0 |= UCTXSTT;
     UCB0CTLW0 |= UCTXSTP;           // set stop
@@ -243,7 +448,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
 
     // check if the statusByte isn't 0x00 to return the error
 
-    if(statusByte != 0x00){
+    if(statusByte != SFE_BIO_SUCCESS){
         return statusByte;
     }
 
@@ -291,11 +496,49 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
 
     // check if the statusByte isn't 0x00 to return the error
 
-    if(statusByte != 0x00){
+    if(statusByte != SFE_BIO_SUCCESS){
         return statusByte;
     }
 
     return returnByte;
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readFillArray(uint8_t _familyByte, uint8_t _indexByte, uint8_t arraySize, uint8_t array[]){
+
+    // write request
+    UCB0I2CSA = this->_address;
+    UCB0CTLW0 |= UCTR | UCTXSTT;
+    while(!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _familyByte;
+    while(!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _indexByte;
+    while(UCB0CTLW0 & UCTXSTT);
+    UCB0CTLW0 |= UCTXSTP;
+    while(UCB0CTLW0 & UCTXSTP);
+
+    __delay_cycles(2000);           // 2ms delay @ 1MHz
+
+    // read response
+    UCB0CTLW0 &= ~UCTR;
+    UCB0CTLW0 |= UCTXSTT;
+
+    while(!(UCB0IFG & UCRXIFG));
+    uint8_t statusByte = UCB0RXBUF; // first byte is always status
+
+    if(statusByte != SFE_BIO_SUCCESS){
+        UCB0CTLW0 |= UCTXSTP;
+        return statusByte;
+    }
+
+    for(uint8_t i = 0; i < arraySize; i++){
+        if(i == (arraySize-1)){
+            UCB0CTLW0 |= UCTXSTP;
+        }
+        while(!(UCB0IFG & UCRXIFG));
+        array[i] = UCB0RXBUF;
+    }
+
+    return statusByte;
 }
 
 // creating UART for debugging since printing doesn't seem to work
@@ -389,7 +632,6 @@ int main(void){
 //    printf("Heart Rate: %d bpm\n", (int) mySensorData.heartRate);
 //    printf("Oxygen: %d%%\n", (int) mySensorData.oxygen);
 //    printf("Firmware: v%d.%d.%d\n", (int) firmwareVersion.major, (int) firmwareVersion.minor, (int) firmwareVersion.revision);
-
 
     while(1);
 }

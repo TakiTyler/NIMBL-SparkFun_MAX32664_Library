@@ -299,8 +299,11 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t setOperatingMode(uint8_t selection);
     // sets very basic settings to get sensor & biometric data
     uint8_t configBpm(uint8_t mode);
+    // sets very basic settings to get LED count values from MAX30101
     uint8_t configSensor();
-    uint8_t configSensorBpm(uint8_t);
+    // does both config bpm & config sensor
+    uint8_t configSensorBpm(uint8_t mode);
+    // main logic to read the bpm of user
     bioData readBpm();
     bioData readSensor();
     bioData readSensorBpm();
@@ -310,19 +313,30 @@ class SparkFun_Bio_Sensor_Hub{
     uint16_t readSampleRate();
     uint8_t setAdcRange(uint16_t);
     uint16_t readAdcRange();
+    // helper function, just calls readByte
     uint8_t getMcuType();
     int32_t getBootloaderInf();
+    // helper function, just calls writeByte
     uint8_t max30101Control(uint8_t enable);
+    // helper function, just calls readByte
     uint8_t readMAX30101State();
     uint8_t accelControl(uint8_t);
+    // helper function, just calls writeByte
     uint8_t setOutputMode(uint8_t outputType);
+    // helper function, just calls writeByte
     uint8_t setFifoThreshold(uint8_t threshold);
+    // helper function, just calls readByte
     uint8_t numSamplesOutFifo();
+    // returns the data in fifo
     uint8_t *getDataOutFifo(uint8_t data[]);
+    // adds support for the accelerometor
     uint8_t numSamplesExternalSensor();
-    void writeRegisterMAX30101(uint8_t, uint8_t);
-    void writeRegisterAccel(uint8_t, uint8_t);
-    uint8_t readRegisterMAX30101(uint8_t);
+    // writes the given register value at the given register address
+    void writeRegisterMAX30101(uint8_t regAddr, uint8_t regVal);
+    // writes the given register value at the given register address
+    void writeRegisterAccel(uint8_t regAddr, uint8_t regVal);
+    // reads the given register address for the MAX30101 sensor & returns the value
+    uint8_t readRegisterMAX30101(uint8_t regAddr);
     uint8_t readRegisterAccel(uint8_t);
     sensorAttr getAfeAttributesMAX30101();
     sensorAttr getAfeAttributesAccelerometer();
@@ -336,9 +350,12 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t readAlgoRange();
     uint8_t readAlgoStepSize();
     uint8_t readAlgoSensitivity();
+    // helper function, just calls readByte
     uint8_t readAlgoSamples();
     uint8_t readMaximFastCoef(int32_t coefArr[3]);
+    // helper function, just calls writeByte
     uint8_t agcAlgoControl(uint8_t enable);
+    // helper function, just calls writeByte
     uint8_t maximFastAlgoControl(uint8_t mode);
     bool setNumPages(uint8_t);
     bool eraseFlash();
@@ -381,7 +398,8 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t enableWrite(uint8_t, uint8_t, uint8_t);
     // writes 3 bytes
     uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);
-    uint8_t writeByte(uint8_t, uint8_t, uint8_t, uint8_t);
+    // writes 4 bytes (last one being uint8_t)
+    uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, uint8_t _writeByteTwo);
     uint8_t writeByte(uint8_t, uint8_t, uint8_t, uint16_t);
     uint8_t writeLongBytes(uint8_t, uint8_t, uint8_t, int32_t _writeVal[], const size_t);
     uint8_t writeBytes(uint8_t, uint8_t, uint8_t, uint8_t _writeVal[], const size_t);
@@ -392,7 +410,8 @@ class SparkFun_Bio_Sensor_Hub{
     uint16_t readIntByte(uint8_t, uint8_t, uint8_t);
     uint8_t readMultipleBytes(uint8_t, uint8_t, uint8_t, const size_t, int32_t userArray[]);
     uint8_t readMultipleBytes(uint8_t, uint8_t, uint8_t, const size_t, uint8_t userArray[]);
-    uint8_t readFillArray(uint8_t, uint8_t, uint8_t, uint8_t array[]);
+    // reads array & fills the array passed through
+    uint8_t readFillArray(uint8_t _familyByte, uint8_t _indexByte, uint8_t arraySize, uint8_t array[]);
 
 };
 
