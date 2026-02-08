@@ -293,7 +293,7 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t bpmSenArrTwo[MAXFAST_ARRAY_SIZE + MAXFAST_EXTENDED_DATA + MAX30101_LED_ARRAY]{};
 
     // constructor
-    SparkFun_Bio_Sensor_Hub(uint8_t* resetPort, uint8_t* resetOut, uint16_t resetBit, uint8_t* mfioPort, uint8_t* mfioOut, uint16_t mfioBit, uint8_t address = 0x55);
+    SparkFun_Bio_Sensor_Hub(uint8_t* resetPort, uint8_t* resetOut, uint16_t resetBit, uint8_t* mfioPort, uint8_t* mfioOut, uint16_t mfioBit, uint8_t address);
 
     //// functions ////
 
@@ -369,35 +369,59 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t setAlgoRange(uint8_t perc);
     // changes the step size toward the target for AGC algorithm
     uint8_t setAlgoStepSize(uint8_t step);
-    uint8_t setAlgoSensitivity(uint8_t);
-    uint8_t setAlgoSamples(uint8_t);
-    uint8_t setMaximFastCoef(int32_t, int32_t, int32_t);
+    // changes the sensitivity of the agc algo
+    uint8_t setAlgoSensitivity(uint8_t sense);
+    // changes the number of samples that are averaged
+    uint8_t setAlgoSamples(uint8_t avg);
+    // takes 3 values, used as the Sp02 coefficients
+    uint8_t setMaximFastCoef(int32_t coef1, int32_t coef2, int32_t coef3);
+    // reads and returns the currently set target percentage
     uint8_t readAlgoRange();
+    // returns the step size toward the target for AGC algo
     uint8_t readAlgoStepSize();
+    // returns the sensitivity (percentage) of the automatic gain control
     uint8_t readAlgoSensitivity();
     // helper function, just calls readByte
     uint8_t readAlgoSamples();
+    // reads the maximum age for the wrist heart rate monitor
     uint8_t readMaximFastCoef(int32_t coefArr[3]);
     // helper function, just calls enableWrite
     uint8_t agcAlgoControl(uint8_t enable);
     // helper function, just calls enableWrite
     uint8_t maximFastAlgoControl(uint8_t mode);
-    bool setNumPages(uint8_t);
+    // tells the bootloader how many pages of memory to prepare for a flash write
+    bool setNumPages(uint8_t totalPages);
+    // erases flash memory
     bool eraseFlash();
+    // does as says
     version readBootloaderVers();
+    // does as says
     version readSensorHubVersion();
+    // does as says
     version readAlgorithmVersion();
-    uint8_t isPatientBPMedication(uint8_t);
+    // writes medication value
+    uint8_t isPatientBPMedication(uint8_t medication);
+    // checks for medication value
     uint8_t isPatientBPMedication();
-    uint8_t writeDiastolicVals(uint8_t, uint8_t, uint8_t);
+    // does as name implies
+    uint8_t writeDiastolicVals(uint8_t diasVal1, uint8_t diasVal2, uint8_t diasVal3);
+    // does as name implies
     uint8_t readDiastolicVals(uint8_t userArray[]);
-    uint8_t writeSystolicVals(uint8_t, uint8_t, uint8_t);
+    // does as name implies
+    uint8_t writeSystolicVals(uint8_t sysVal1, uint8_t sysVal2, uint8_t sysVal3);
+    // does as name implies
     uint8_t readSystolicVals(uint8_t userArray[]);
+    // does as name implies
     uint8_t writeBPTAlgoData(uint8_t bptCalibData[]);
+    // does as name implies
     uint8_t readBPTAlgoData(uint8_t userArray[]);
-    uint8_t isPatientResting(uint8_t);
+    // does as name implies
+    uint8_t isPatientResting(uint8_t resting);
+    // does as name implies
     uint8_t isPatientResting();
-    uint8_t writeSP02AlgoCoef(int32_t, int32_t, int32_t);
+    // does as name implies
+    uint8_t writeSP02AlgoCoef(int32_t intA, int32_t intB, int32_t intC);
+    // does as name implies
     uint8_t readSP02AlgoCoef(int32_t userArray[]);
 
     private:
@@ -420,6 +444,7 @@ class SparkFun_Bio_Sensor_Hub{
 
     // functions
 
+    // enables write
     uint8_t enableWrite(uint8_t _familyByte, uint8_t _indexByte, uint8_t _enableByte);
     // writes 3 bytes
     uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);

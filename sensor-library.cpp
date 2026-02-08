@@ -749,9 +749,60 @@ uint8_t SparkFun_Bio_Sensor_Hub::setAlgoStepSize(uint8_t step)
     return writeByte(CHANGE_ALGORITHM_CONFIG, SET_STEP_SIZE, AGC_STEP_SIZE_ID, step);
 }
 
+uint8_t SparkFun_Bio_Sensor_Hub::setAlgoSensitivity(uint8_t sense)
+{
+    if(sense > 100)
+    {
+        return INCORR_PARAM;
+    }
+
+    return writeByte(CHANGE_ALGORITHM_CONFIG, SET_SENSITIVITY, AGC_SENSITIVITY_ID, sense);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::setAlgoSamples(uint8_t avg)
+{
+    return writeByte(CHANGE_ALGORITHM_CONFIG, SET_AVG_SAMPLES, AGC_NUM_SAMP_ID, avg);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::setMaximFastCoef(int32_t coef1, int32_t coef2, int32_t coef3)
+{
+    const size_t numCoefVals = 3;
+    int32_t coefArr[3] = {coef1, coef2, coef3};
+
+    return writeLongBytes(CHANGE_ALGORITHM_CONFIG, SET_PULSE_OX_COEF, MAXIMFAST_COEF_ID, coefArr, numCoefVals);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readAlgoRange()
+{
+    return readByte(READ_ALGORITHM_CONFIG, READ_AGC_PERCENTAGE, READ_AGC_PERC_ID);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readAlgoStepSize()
+{
+    return readByte(READ_ALGORITHM_CONFIG, READ_AGC_STEP_SIZE, READ_AGC_STEP_SIZE_ID);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readAlgoSensitivity()
+{
+    return readByte(READ_ALGORITHM_CONFIG, READ_AGC_SENSITIVITY, READ_AGC_SENSITIVITY_ID);
+}
+
 uint8_t SparkFun_Bio_Sensor_Hub::readAlgoSamples()
 {
     return readByte(READ_ALGORITHM_CONFIG, READ_AGC_NUM_SAMPLES, READ_AGC_NUM_SAMPLES_ID);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readMaximFastCoef(int32_t coefArr[3])
+{
+    const size_t numOfReads = 3;
+    uint8_t status = readMultipleBytes(READ_ALGORITHM_CONFIG, READ_MAX_FAST_COEF, READ_MAX_FAST_COEF_ID, numOfReads, coefArr);
+
+    // original code does mult by 100,000 but that is usually for display formatting
+    // for now, we shall save performance, but just in case:
+    // coefArr[0] *= 100000;
+    // coefArr[1] *= 100000;
+    // coefArr[2] *= 100000;
+    return status;
 }
 
 uint8_t SparkFun_Bio_Sensor_Hub::agcAlgoControl(uint8_t enable)
@@ -783,6 +834,187 @@ uint8_t SparkFun_Bio_Sensor_Hub::maximFastAlgoControl(uint8_t mode)
     return enableWrite(ENABLE_ALGORITHM, ENABLE_WHRM_ALGO, mode);
 }
 
+bool SparkFun_Bio_Sensor_Hub::setNumPages(uint8_t totalPages)
+{
+    return writeByte(BOOTLOADER_FLASH, SET_NUM_PAGES, 0x00, totalPages);
+}
+
+bool SparkFun_Bio_Sensor_Hub::eraseFlash()
+{
+    UCB0I2CSA = this->_address;
+    UCB0CTLW0 |= UCTR | UCTXSTT;
+
+    while(!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = BOOTLOADER_FLASH;
+    while(!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = ERASE_FLASH;
+
+    while (UCB0CTLW0 & UCTXSTT);
+    UCB0CTLW0 |= UCTXSTP;
+    while (UCB0CTLW0 & UCTXSTP);
+
+    __delay_cycles(10000); // 10ms @ 1MHz
+
+    // read back the single status byte
+    UCB0CTLW0 &= ~UCTR;
+    UCB0CTLW0 |= UCTXSTT;
+    UCB0CTLW0 |= UCTXSTP; // set stop
+
+    while (!(UCB0IFG & UCRXIFG));
+    uint8_t statusByte = UCB0RXBUF;
+
+    while (UCB0CTLW0 & UCTXSTP);
+
+    return (statusByte == SFE_BIO_SUCCESS);
+}
+
+version SparkFun_Bio_Sensor_Hub::readBootloaderVers()
+{
+    version booVers = {0, 0, 0}; // BOO! (originally from the github, funny comment)
+    uint8_t versionArray[3] = {0};
+
+    // the logic from the original is changed with this. we were requesting and reading 3 bytes
+    // readMultipleBytes does exactly as the above comment says.
+    uint8_t status = readMultipleBytes(BOOTLOADER_INFO, BOOTLOADER_VERS, 0x00, 3, versionArray);
+
+    if(status == SFE_BIO_SUCCESS)
+    {
+        booVers.major = versionArray[0];
+        booVers.minor = versionArray[1];
+        booVers.revision = versionArray[2];
+    }
+
+    return booVers;
+}
+
+version SparkFun_Bio_Sensor_Hub::readSensorHubVersion()
+{
+    version bioHubVers = {0, 0, 0};
+    uint8_t versionArray[3] = {0};
+
+    uint8_t status = readMultipleBytes(IDENTITY, READ_SENSOR_HUB_VERS, 0x00, 3, versionArray);
+
+    if(status == SFE_BIO_SUCCESS)
+    {
+        bioHubVers.major = versionArray[0];
+        bioHubVers.minor = versionArray[1];
+        bioHubVers.revision = versionArray[2];
+    }
+
+    return bioHubVers;
+}
+
+version SparkFun_Bio_Sensor_Hub::readAlgorithmVersion()
+{
+    version libAlgoVersion = {0, 0, 0};
+    uint8_t versionArray[3] = {0};
+
+    uint8_t status = readMultipleBytes(IDENTITY, READ_ALGO_VERS, 0x00, 3, versionArray);
+
+    if(status == SFE_BIO_SUCCESS)
+    {
+        libAlgoVersion.major = versionArray[0];
+        libAlgoVersion.minor = versionArray[1];
+        libAlgoVersion.revision = versionArray[2];
+    }
+
+    return libAlgoVersion;
+}
+
+//// Functions below are for Blood Pressure version, putting them in JUST IN CASE ////
+
+uint8_t SparkFun_Bio_Sensor_Hub::isPatientBPMedication(uint8_t medication)
+{
+    switch(medication)
+    {
+        case 0:
+        case 1:
+            break;
+        default:
+            return INCORR_PARAM;
+    }
+
+    return writeByte(CHANGE_ALGORITHM_CONFIG, BPT_CONFIG, BPT_MEDICATION, medication);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::isPatientBPMedication()
+{
+    return readByte(CHANGE_ALGORITHM_CONFIG, BPT_CONFIG, BPT_MEDICATION);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::writeDiastolicVals(uint8_t diasVal1, uint8_t diasVal2, uint8_t diasVal3)
+{
+    const size_t numDiasVals = 3;
+    uint8_t diasVals[3] = {diasVal1, diasVal2, diasVal3};
+
+    return writeBytes(CHANGE_ALGORITHM_CONFIG, BPT_CONFIG, DIASTOLIC_VALUE, diasVals, numDiasVals);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readDiastolicVals(uint8_t userArray[])
+{
+    const size_t numDiasVals = 3;
+    return readMultipleBytes(READ_ALGORITHM_CONFIG, BPT_CONFIG, DIASTOLIC_VALUE, numDiasVals, userArray);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::writeSystolicVals(uint8_t sysVal1, uint8_t sysVal2, uint8_t sysVal3)
+{
+    const size_t numSysVals = 3;
+    uint8_t sysVals[3] = {sysVal1, sysVal2, sysVal3};
+
+    return writeBytes(CHANGE_ALGORITHM_CONFIG, BPT_CONFIG, SYSTOLIC_VALUE, sysVals, numSysVals);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readSystolicVals(uint8_t userArray[])
+{
+    const size_t numSysVals = 3;
+
+    return readMultipleBytes(READ_ALGORITHM_CONFIG, BPT_CONFIG, SYSTOLIC_VALUE, numSysVals, userArray);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::writeBPTAlgoData(uint8_t bptCalibData[])
+{
+    const size_t numCalibVals = 824;
+    return writeBytes(CHANGE_ALGORITHM_CONFIG, BPT_CONFIG, BPT_CALIB_DATA, bptCalibData, numCalibVals);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readBPTAlgoData(uint8_t userArray[])
+{
+    const size_t numCalibVals = 824;
+    return readMultipleBytes(READ_ALGORITHM_CONFIG, BPT_CONFIG, BPT_CALIB_DATA, numCalibVals, userArray);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::isPatientResting(uint8_t resting)
+{
+    switch(resting)
+    {
+        case 0:
+        case 1:
+            break;
+        default:
+            return INCORR_PARAM;
+    }
+
+    return writeByte(CHANGE_ALGORITHM_CONFIG, BPT_CONFIG, PATIENT_RESTING, resting);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::isPatientResting()
+{
+    return readByte(READ_ALGORITHM_CONFIG, BPT_CONFIG, PATIENT_RESTING);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::writeSP02AlgoCoef(int32_t intA, int32_t intB, int32_t intC)
+{
+    const size_t numCoefVals = 3;
+    int32_t coefVals[numCoefVals] = {intA, intB, intC};
+
+    return writeLongBytes(CHANGE_ALGORITHM_CONFIG, BPT_CONFIG, AGC_SP02_COEFS, coefVals, numCoefVals);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::readSP02AlgoCoef(int32_t userArray[])
+{
+    return readMultipleBytes(READ_ALGORITHM_CONFIG, BPT_CONFIG, AGC_SP02_COEFS, 3, userArray);
+}
+
 //// DRIVER FUNCTIONS ////
 
 uint8_t SparkFun_Bio_Sensor_Hub::enableWrite(uint8_t _familyByte, uint8_t _indexByte, uint8_t _enableByte)
@@ -807,15 +1039,15 @@ uint8_t SparkFun_Bio_Sensor_Hub::enableWrite(uint8_t _familyByte, uint8_t _index
     // specific hub processing delays
     if(_familyByte == ENABLE_SENSOR && _indexByte == ENABLE_MAX30101)
     {
-        __delay_cycles(45000);
+        __delay_cycles(45000); // 45ms @ 1MHz
     }
     else if(_familyByte == ENABLE_ALGORITHM && _indexByte == ENABLE_AGC_ALGO)
     {
-        __delay_cycles(10000);
+        __delay_cycles(10000); // 10ms @ 1MHz
     }
     else if(_familyByte == ENABLE_ALGORITHM && _indexByte == ENABLE_WHRM_ALGO)
     {
-        __delay_cycles(50000);
+        __delay_cycles(50000); // 50ms @ 1MHz
     }
     
     // read back the single status byte
@@ -839,16 +1071,13 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
     UCB0I2CSA = this->_address;
     UCB0CTLW0 |= UCTR | UCTXSTT;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
     while (UCB0CTLW0 & UCTXSTT);
@@ -878,27 +1107,21 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
     UCB0I2CSA = this->_address;
     UCB0CTLW0 |= UCTR | UCTXSTT;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByteTwo;
 
-    while (UCB0CTLW0 & UCTXSTT)
-        ;
+    while (UCB0CTLW0 & UCTXSTT);
     UCB0CTLW0 |= UCTXSTP;
-    while (UCB0CTLW0 & UCTXSTP)
-        ;
+    while (UCB0CTLW0 & UCTXSTP);
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -907,12 +1130,10 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
     UCB0CTLW0 |= UCTXSTT;
     UCB0CTLW0 |= UCTXSTP; // set stop
 
-    while (!(UCB0IFG & UCRXIFG))
-        ;
+    while (!(UCB0IFG & UCRXIFG));
     statusByte = UCB0RXBUF;
 
-    while (UCB0CTLW0 & UCTXSTP)
-        ;
+    while (UCB0CTLW0 & UCTXSTP);
 
     return statusByte;
 }
@@ -924,31 +1145,24 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
     UCB0I2CSA = this->_address;
     UCB0CTLW0 |= UCTR | UCTXSTT;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
     // split the 16-bit value into two 8-bit chunks
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = (uint8_t)(_val >> 8); // MSB
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = (uint8_t)(_val & 0xFF); // LSB
 
-    while (UCB0CTLW0 & UCTXSTT)
-        ;
+    while (UCB0CTLW0 & UCTXSTT);
     UCB0CTLW0 |= UCTXSTP;
-    while (UCB0CTLW0 & UCTXSTP)
-        ;
+    while (UCB0CTLW0 & UCTXSTP);
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -957,8 +1171,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
     UCB0CTLW0 |= UCTXSTT;
     UCB0CTLW0 |= UCTXSTP; // set stop
 
-    while (!(UCB0IFG & UCRXIFG))
-        ;
+    while (!(UCB0IFG & UCRXIFG));
     statusByte = UCB0RXBUF;
 
     return statusByte;
@@ -971,33 +1184,27 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeLongBytes(uint8_t _familyByte, uint8_t _in
     UCB0I2CSA = this->_address;
     UCB0CTLW0 |= UCTR | UCTXSTT;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
     for (size_t i = 0; i < _len; i++)
     {
         for (uint8_t shift = 24; shift >= 0; shift -= 8)
         {
-            while (!(UCB0IFG & UCTXIFG))
-                ;
+            while (!(UCB0IFG & UCTXIFG));
             UCB0TXBUF = (uint8_t)(_writeVal[i] >> shift);
         }
     }
 
-    while (UCB0CTLW0 & UCTXSTT)
-        ;
+    while (UCB0CTLW0 & UCTXSTT);
     UCB0CTLW0 |= UCTXSTP;
-    while (UCB0CTLW0 & UCTXSTP)
-        ;
+    while (UCB0CTLW0 & UCTXSTP);
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -1006,8 +1213,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeLongBytes(uint8_t _familyByte, uint8_t _in
     UCB0CTLW0 |= UCTXSTT;
     UCB0CTLW0 |= UCTXSTP; // set stop
 
-    while (!(UCB0IFG & UCRXIFG))
-        ;
+    while (!(UCB0IFG & UCRXIFG));
     statusByte = UCB0RXBUF;
 
     return statusByte;
@@ -1020,16 +1226,13 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeBytes(uint8_t _familyByte, uint8_t _indexB
     UCB0I2CSA = this->_address;
     UCB0CTLW0 |= UCTR | UCTXSTT;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
     for (size_t i = 0; i < _len; i++)
@@ -1039,11 +1242,9 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeBytes(uint8_t _familyByte, uint8_t _indexB
         UCB0TXBUF = _writeVal[i];
     }
 
-    while (UCB0CTLW0 & UCTXSTT)
-        ;
+    while (UCB0CTLW0 & UCTXSTT);
     UCB0CTLW0 |= UCTXSTP;
-    while (UCB0CTLW0 & UCTXSTP)
-        ;
+    while (UCB0CTLW0 & UCTXSTP);
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -1052,8 +1253,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeBytes(uint8_t _familyByte, uint8_t _indexB
     UCB0CTLW0 |= UCTXSTT;
     UCB0CTLW0 |= UCTXSTP; // set stop
 
-    while (!(UCB0IFG & UCRXIFG))
-        ;
+    while (!(UCB0IFG & UCRXIFG));
     statusByte = UCB0RXBUF;
 
     return statusByte;
@@ -1069,19 +1269,15 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
     UCB0I2CSA = _address;        // set slave address
     UCB0CTLW0 |= UCTR | UCTXSTT; // transmitter mode & start condition
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;                    // wait for tx buffer
+    while (!(UCB0IFG & UCTXIFG));                    // wait for tx buffer
     UCB0TXBUF = _familyByte; // send family byte
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;                   // wait for tx buffer
+    while (!(UCB0IFG & UCTXIFG));                   // wait for tx buffer
     UCB0TXBUF = _indexByte; // send family byte
 
-    while (UCB0CTLW0 & UCTXSTT)
-        ;                 // wait for start bit to clear
+    while (UCB0CTLW0 & UCTXSTT);                 // wait for start bit to clear
     UCB0CTLW0 |= UCTXSTP; // generate stop condition
-    while (UCB0CTLW0 & UCTXSTP)
-        ; // wait for stop to finish
+    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -1090,18 +1286,15 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
     UCB0CTLW0 |= UCTXSTT; // start condition
 
     // read status byte
-    while (!(UCB0IFG & UCTXIFG))
-        ; // wait until interrupt
+    while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
     statusByte = UCB0RXBUF;
 
     // read return byte
     UCB0CTLW0 |= UCTXSTP; // set stop before reading the last byte
-    while (!(UCB0IFG & UCTXIFG))
-        ; // wait until interrupt
+    while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
     returnByte = UCB0RXBUF;
 
-    while (UCB0CTLW0 & UCTXSTP)
-        ; // wait for stop to finish
+    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
 
     // check if the statusByte isn't 0x00 to return the error
 
@@ -1123,23 +1316,18 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
     UCB0I2CSA = this->_address;
     UCB0CTLW0 = UCTR | UCTXSTT;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
-    while (UCB0CTLW0 & UCTXSTT)
-        ;                 // wait for start bit to clear
+    while (UCB0CTLW0 & UCTXSTT);                 // wait for start bit to clear
     UCB0CTLW0 |= UCTXSTP; // generate stop condition
-    while (UCB0CTLW0 & UCTXSTP)
-        ; // wait for stop to finish
+    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -1148,18 +1336,15 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
     UCB0CTLW0 |= UCTXSTT; // start condition
 
     // read status byte
-    while (!(UCB0IFG & UCTXIFG))
-        ; // wait until interrupt
+    while (!(UCB0IFG & UCRXIFG)); // wait until interrupt
     statusByte = UCB0RXBUF;
 
     // read return byte
     UCB0CTLW0 |= UCTXSTP; // set stop before reading the last byte
-    while (!(UCB0IFG & UCTXIFG))
-        ; // wait until interrupt
+    while (!(UCB0IFG & UCRXIFG)); // wait until interrupt
     returnByte = UCB0RXBUF;
 
-    while (UCB0CTLW0 & UCTXSTP)
-        ; // wait for stop to finish
+    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
 
     // check if the statusByte isn't 0x00 to return the error
 
@@ -1180,23 +1365,18 @@ uint16_t SparkFun_Bio_Sensor_Hub::readIntByte(uint8_t _familyByte, uint8_t _inde
     UCB0I2CSA = this->_address;
     UCB0CTLW0 = UCTR | UCTXSTT;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
-    while (UCB0CTLW0 & UCTXSTT)
-        ;                 // wait for start bit to clear
+    while (UCB0CTLW0 & UCTXSTT);                 // wait for start bit to clear
     UCB0CTLW0 |= UCTXSTP; // generate stop condition
-    while (UCB0CTLW0 & UCTXSTP)
-        ; // wait for stop to finish
+    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -1205,8 +1385,7 @@ uint16_t SparkFun_Bio_Sensor_Hub::readIntByte(uint8_t _familyByte, uint8_t _inde
     UCB0CTLW0 |= UCTXSTT; // start condition
 
     // read status byte
-    while (!(UCB0IFG & UCTXIFG))
-        ; // wait until interrupt
+    while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
     statusByte = UCB0RXBUF;
 
     // check for an error
@@ -1217,18 +1396,15 @@ uint16_t SparkFun_Bio_Sensor_Hub::readIntByte(uint8_t _familyByte, uint8_t _inde
     }
 
     // read high byte
-    while (!(UCB0IFG & UCRXIFG))
-        ;
+    while (!(UCB0IFG & UCRXIFG));
     returnVal = (uint16_t)UCB0RXBUF << 8;
 
     // read low byte
     UCB0CTLW0 |= UCTXSTP;
-    while (!(UCB0IFG & UCRXIFG))
-        ;
+    while (!(UCB0IFG & UCRXIFG));
     returnVal |= UCB0RXBUF;
 
-    while (UCB0CTLW0 & UCTXSTP)
-        ;
+    while (UCB0CTLW0 & UCTXSTP);
 
     return returnVal;
 }
@@ -1241,23 +1417,18 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
     UCB0I2CSA = this->_address;
     UCB0CTLW0 = UCTR | UCTXSTT;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
-    while (UCB0CTLW0 & UCTXSTT)
-        ;                 // wait for start bit to clear
+    while (UCB0CTLW0 & UCTXSTT);                 // wait for start bit to clear
     UCB0CTLW0 |= UCTXSTP; // generate stop condition
-    while (UCB0CTLW0 & UCTXSTP)
-        ; // wait for stop to finish
+    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -1266,8 +1437,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
     UCB0CTLW0 |= UCTXSTT; // start condition
 
     // read status byte
-    while (!(UCB0IFG & UCTXIFG))
-        ; // wait until interrupt
+    while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
     statusByte = UCB0RXBUF;
 
     // check for an error
@@ -1299,23 +1469,18 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
     UCB0I2CSA = this->_address;
     UCB0CTLW0 = UCTR | UCTXSTT;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
 
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
-    while (UCB0CTLW0 & UCTXSTT)
-        ;                 // wait for start bit to clear
+    while (UCB0CTLW0 & UCTXSTT);                 // wait for start bit to clear
     UCB0CTLW0 |= UCTXSTP; // generate stop condition
-    while (UCB0CTLW0 & UCTXSTP)
-        ; // wait for stop to finish
+    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -1324,8 +1489,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
     UCB0CTLW0 |= UCTXSTT; // start condition
 
     // read status byte
-    while (!(UCB0IFG & UCTXIFG))
-        ; // wait until interrupt
+    while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
     statusByte = UCB0RXBUF;
 
     // check for an error
@@ -1346,8 +1510,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
             {
                 UCB0CTLW0 |= UCTXSTP;
             }
-            while (!(UCB0IFG & UCRXIFG))
-                ;
+            while (!(UCB0IFG & UCRXIFG));
             userArray[i] = (userArray[i] << 8) | UCB0RXBUF;
         }
     }
@@ -1361,17 +1524,13 @@ uint8_t SparkFun_Bio_Sensor_Hub::readFillArray(uint8_t _familyByte, uint8_t _ind
     // write request
     UCB0I2CSA = this->_address;
     UCB0CTLW0 |= UCTR | UCTXSTT;
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
-    while (!(UCB0IFG & UCTXIFG))
-        ;
+    while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
-    while (UCB0CTLW0 & UCTXSTT)
-        ;
+    while (UCB0CTLW0 & UCTXSTT);
     UCB0CTLW0 |= UCTXSTP;
-    while (UCB0CTLW0 & UCTXSTP)
-        ;
+    while (UCB0CTLW0 & UCTXSTP);
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -1379,8 +1538,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::readFillArray(uint8_t _familyByte, uint8_t _ind
     UCB0CTLW0 &= ~UCTR;
     UCB0CTLW0 |= UCTXSTT;
 
-    while (!(UCB0IFG & UCRXIFG))
-        ;
+    while (!(UCB0IFG & UCRXIFG));
     uint8_t statusByte = UCB0RXBUF; // first byte is always status
 
     if (statusByte != SFE_BIO_SUCCESS)
@@ -1423,8 +1581,7 @@ void initUART()
 
 void uart_write_char(char c)
 {
-    while (!(UCA0IFG & UCTXIFG))
-        ; // wait for tx buffer to be empty
+    while (!(UCA0IFG & UCTXIFG)); // wait for tx buffer to be empty
     UCA0TXBUF = c;
 }
 
@@ -1505,6 +1662,5 @@ int main(void)
     //    printf("Oxygen: %d%%\n", (int) mySensorData.oxygen);
     //    printf("Firmware: v%d.%d.%d\n", (int) firmwareVersion.major, (int) firmwareVersion.minor, (int) firmwareVersion.revision);
 
-    while (1)
-        ;
+    while (1);
 }
