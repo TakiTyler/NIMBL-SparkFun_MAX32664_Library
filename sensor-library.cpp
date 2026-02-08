@@ -454,25 +454,13 @@ uint8_t SparkFun_Bio_Sensor_Hub::setPulseWidth(uint16_t width)
     uint8_t bits;
     uint8_t regVal;
 
-    if (width == 69)
+    switch(width)
     {
-        bits = 0;
-    }
-    else if (width == 118)
-    {
-        bits = 1;
-    }
-    else if (width == 215)
-    {
-        bits = 2;
-    }
-    else if (width == 411)
-    {
-        bits = 3;
-    }
-    else
-    {
-        return INCORR_PARAM;
+        case 69:    bits = 0; break;
+        case 118:   bits = 1; break;
+        case 215:   bits = 2; break;
+        case 411:   bits = 3; break;
+        default:    return INCORR_PARAM;
     }
 
     // get current register value to not overwrite anything
@@ -490,25 +478,103 @@ uint16_t SparkFun_Bio_Sensor_Hub::readPulseWidth()
     uint8_t regVal = readRegisterMAX30101(CONFIGURATION_REGISTER);
     regVal &= READ_PULSE_MASK;
 
-    if (regVal == 0)
+    switch(regVal)
     {
-        return 69;
+        case 0: return 69;
+        case 1: return 118;
+        case 2: return 215;
+        case 3: return 411;
+        default: return ERR_UNKNOWN;
     }
-    else if (regVal == 1)
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::setSampleRate(uint16_t sampleRate)
+{
+    uint8_t bits;
+    uint8_t regVal;
+
+    // making sure the correct sample rate was selected
+
+    switch(sampleRate)
     {
-        return 118;
+        case 50:    bits = 0; break;
+        case 100:   bits = 1; break;
+        case 200:   bits = 2; break;
+        case 400:   bits = 3; break;
+        case 800:   bits = 4; break;
+        case 1000:  bits = 5; break;
+        case 1600:  bits = 6; break;
+        case 3200:  bits = 7; break;
+        default:    return INCORR_PARAM;
     }
-    else if (regVal == 2)
+
+    // read-modify-write
+    regVal = readRegisterMAX30101(CONFIGURATION_REGISTER);
+    regVal &= SAMP_MASK;
+    regVal |= (bits << 2);
+
+    writeRegisterMAX30101(CONFIGURATION_REGISTER, regVal);
+
+    return SFE_BIO_SUCCESS;
+}
+
+uint16_t SparkFun_Bio_Sensor_Hub::readSampleRate()
+{
+    // read the register and isolate bits
+    uint8_t regVal = readRegisterMAX30101(CONFIGURATION_REGISTER);
+    regVal &= READ_SAMP_MASK;
+    regVal = (regVal >> 2);
+
+    switch(regVal)
     {
-        return 215;
+        case 0: return 50;
+        case 1: return 100;
+        case 2: return 200;
+        case 3: return 400;
+        case 4: return 800;
+        case 5: return 1000;
+        case 6: return 1600;
+        case 7: return 3200;
+        default: return ERR_UNKNOWN;
     }
-    else if (regVal == 3)
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::setAdcRange(uint16_t adcVal)
+{
+    uint8_t bits;
+    uint8_t regVal;
+
+    switch(adcVal)
     {
-        return 411;
+        case 2048:  bits = 0; break;
+        case 4096:  bits = 1; break;
+        case 8192:  bits = 2; break;
+        case 16384: bits = 3; break;
+        default:    return INCORR_PARAM;
     }
-    else
+
+    regVal = readRegisterMAX30101(CONFIGURATION_REGISTER);
+    regVal &= ADC_MASK;
+    regVal |= (bits << 5);
+
+    writeRegisterMAX30101(CONFIGURATION_REGISTER, regVal);
+
+    return SFE_BIO_SUCCESS;
+}
+
+uint16_t SparkFun_Bio_Sensor_Hub::readAdcRange()
+{
+    uint8_t regVal = readRegisterMAX30101(CONFIGURATION_REGISTER);
+    regVal &= READ_ADC_MASK;
+    regVal = (regVal >> 5);
+
+    switch(regVal)
     {
-        return ERR_UNKNOWN;
+        case 0: return 2048;
+        case 1: return 4096;
+        case 2: return 8192;
+        case 3: return 16384;
+        default: return ERR_UNKNOWN;
     }
 }
 
@@ -517,9 +583,52 @@ uint8_t SparkFun_Bio_Sensor_Hub::getMcuType()
     return readByte(IDENTITY, READ_MCU_TYPE, NO_WRITE);
 }
 
+int32_t SparkFun_Bio_Sensor_Hub::getBootloaderInf()
+{
+    int32_t bootVers = 0;
+    const size_t sizeOfRev = 4;
+    int32_t revNum[sizeOfRev] = {0};
+
+    uint8_t status = readMultipleBytes(BOOTLOADER_INFO, BOOTLOADER_VERS, 0x00, sizeOfRev, revNum);
+
+    if(status != SFE_BIO_SUCCESS)
+    {
+        return ERR_UNKNOWN;
+    }
+
+    bootVers |= ((int32_t)revNum[1] << 16);
+    bootVers |= ((int32_t)revNum[2] << 8);
+    bootVers |= (int32_t)revNum[3];
+
+    return bootVers;
+}
+
 uint8_t SparkFun_Bio_Sensor_Hub::max30101Control(uint8_t enable)
 {
-    return writeByte(ENABLE_SENSOR, 0x03, enable);
+    switch(enable)
+    {
+        case 0:
+        case 1:
+            break;
+        default:
+            return INCORR_PARAM;
+    }
+
+    return enableWrite(ENABLE_SENSOR, ENABLE_MAX30101, enable);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::accelControl(uint8_t accelSwitch)
+{
+    switch(accelSwitch)
+    {
+        case 0:
+        case 1:
+            break;
+        default:
+            return INCORR_PARAM;
+    }
+
+    return enableWrite(ENABLE_SENSOR, ENABLE_ACCELEROMETER, accelSwitch);
 }
 
 uint8_t SparkFun_Bio_Sensor_Hub::readMAX30101State()
@@ -529,12 +638,17 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMAX30101State()
 
 uint8_t SparkFun_Bio_Sensor_Hub::setOutputMode(uint8_t outputType)
 {
-    return writeByte(OUTPUT_MODE, 0x00, outputType);
+    if(outputType > SENSOR_ALGO_COUNTER)
+    {
+        return INCORR_PARAM;
+    }
+
+    return writeByte(OUTPUT_MODE, SET_FORMAT, outputType);
 }
 
 uint8_t SparkFun_Bio_Sensor_Hub::setFifoThreshold(uint8_t threshold)
 {
-    return writeByte(OUTPUT_MODE, 0x01, threshold);
+    return writeByte(OUTPUT_MODE, WRITE_SET_THRESHOLD, threshold);
 }
 
 uint8_t SparkFun_Bio_Sensor_Hub::numSamplesOutFifo()
@@ -569,19 +683,152 @@ uint8_t SparkFun_Bio_Sensor_Hub::readRegisterMAX30101(uint8_t regAddr)
     return readByte(READ_REGISTER, READ_MAX30101, regAddr);
 }
 
+uint8_t SparkFun_Bio_Sensor_Hub::readRegisterAccel(uint8_t regAddr)
+{
+    return readByte(READ_REGISTER, READ_ACCELEROMETER, regAddr);
+}
+
+sensorAttr SparkFun_Bio_Sensor_Hub::getAfeAttributesMAX30101()
+{
+    sensorAttr maxAttr = {0};
+    uint8_t tempArray[2]{};
+
+    uint8_t status = readFillArray(READ_ATTRIBUTES_AFE, RETRIEVE_AFE_MAX30101, 2, tempArray);
+
+    if(status == SFE_BIO_SUCCESS)
+    {
+        maxAttr.byteWord = tempArray[0];
+        maxAttr.availRegisters = tempArray[1];
+    }
+
+    return maxAttr;
+}
+
+sensorAttr SparkFun_Bio_Sensor_Hub::getAfeAttributesAccelerometer()
+{
+    sensorAttr accelAttr = {0};
+    uint8_t tempArray[2]{};
+
+    uint8_t status = readFillArray(READ_ATTRIBUTES_AFE, RETRIEVE_AFE_ACCELEROMETER, 2, tempArray);
+
+    if(status == SFE_BIO_SUCCESS){
+        accelAttr.byteWord = tempArray[0];
+        accelAttr.availRegisters = tempArray[1];
+    }
+
+    return accelAttr;
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::dumpRegisterMAX30101(uint8_t regArray[])
+{
+    return readFillArray(DUMP_REGISTERS, DUMP_REGISTER_MAX30101, 36, regArray);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::dumpRegisterAccelerometer(uint8_t numReg, uint8_t regArray[])
+{
+    return readFillArray(DUMP_REGISTERS, DUMP_REGISTER_ACCELEROMETER, numReg, regArray);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::setAlgoRange(uint8_t perc)
+{
+    if(perc > 100)
+    {
+        return INCORR_PARAM;
+    }
+
+    return writeByte(CHANGE_ALGORITHM_CONFIG, SET_TARG_PERC, AGC_GAIN_ID, perc);
+}
+
+uint8_t SparkFun_Bio_Sensor_Hub::setAlgoStepSize(uint8_t step)
+{
+    if(step > 100)
+    {
+        return INCORR_PARAM;
+    }
+
+    return writeByte(CHANGE_ALGORITHM_CONFIG, SET_STEP_SIZE, AGC_STEP_SIZE_ID, step);
+}
+
 uint8_t SparkFun_Bio_Sensor_Hub::readAlgoSamples()
 {
-    return readByte(READ_ALGORITHM_CONFIG, 0x00, 0x03);
+    return readByte(READ_ALGORITHM_CONFIG, READ_AGC_NUM_SAMPLES, READ_AGC_NUM_SAMPLES_ID);
 }
 
 uint8_t SparkFun_Bio_Sensor_Hub::agcAlgoControl(uint8_t enable)
 {
-    return writeByte(ENABLE_ALGORITHM, 0x00, enable);
+    switch(enable)
+    {
+        case 0:
+        case 1:
+            break;
+        default:
+            return INCORR_PARAM;
+    }
+
+    return enableWrite(ENABLE_ALGORITHM, ENABLE_AGC_ALGO, enable);
 }
 
 uint8_t SparkFun_Bio_Sensor_Hub::maximFastAlgoControl(uint8_t mode)
 {
-    return writeByte(ENABLE_ALGORITHM, 0x02, mode);
+    switch(mode)
+    {
+        case 0:
+        case 1:
+        case 2:
+            break;
+        default:
+            return INCORR_PARAM;
+    }
+
+    return enableWrite(ENABLE_ALGORITHM, ENABLE_WHRM_ALGO, mode);
+}
+
+//// DRIVER FUNCTIONS ////
+
+uint8_t SparkFun_Bio_Sensor_Hub::enableWrite(uint8_t _familyByte, uint8_t _indexByte, uint8_t _enableByte)
+{
+    // write sequence
+    UCB0I2CSA = this->_address;
+    UCB0CTLW0 |= UCTR | UCTXSTT;
+
+    while (!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _familyByte;
+
+    while (!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _indexByte;
+
+    while (!(UCB0IFG & UCTXIFG));
+    UCB0TXBUF = _enableByte;
+
+    while (UCB0CTLW0 & UCTXSTT);
+    UCB0CTLW0 |= UCTXSTP;
+    while (UCB0CTLW0 & UCTXSTP);
+
+    // specific hub processing delays
+    if(_familyByte == ENABLE_SENSOR && _indexByte == ENABLE_MAX30101)
+    {
+        __delay_cycles(45000);
+    }
+    else if(_familyByte == ENABLE_ALGORITHM && _indexByte == ENABLE_AGC_ALGO)
+    {
+        __delay_cycles(10000);
+    }
+    else if(_familyByte == ENABLE_ALGORITHM && _indexByte == ENABLE_WHRM_ALGO)
+    {
+        __delay_cycles(50000);
+    }
+    
+    // read back the single status byte
+    UCB0CTLW0 &= ~UCTR;
+    UCB0CTLW0 |= UCTXSTT;
+    UCB0CTLW0 |= UCTXSTP; // set stop
+
+    while (!(UCB0IFG & UCRXIFG));
+    uint8_t statusByte = UCB0RXBUF;
+
+    while (UCB0CTLW0 & UCTXSTP);
+
+    return statusByte;
 }
 
 uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte)
@@ -604,11 +851,9 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
         ;
     UCB0TXBUF = _writeByte;
 
-    while (UCB0CTLW0 & UCTXSTT)
-        ;
+    while (UCB0CTLW0 & UCTXSTT);
     UCB0CTLW0 |= UCTXSTP;
-    while (UCB0CTLW0 & UCTXSTP)
-        ;
+    while (UCB0CTLW0 & UCTXSTP);
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
@@ -617,12 +862,10 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
     UCB0CTLW0 |= UCTXSTT;
     UCB0CTLW0 |= UCTXSTP; // set stop
 
-    while (!(UCB0IFG & UCRXIFG))
-        ;
+    while (!(UCB0IFG & UCRXIFG));
     statusByte = UCB0RXBUF;
 
-    while (UCB0CTLW0 & UCTXSTP)
-        ;
+    while (UCB0CTLW0 & UCTXSTP);
 
     return statusByte;
 }

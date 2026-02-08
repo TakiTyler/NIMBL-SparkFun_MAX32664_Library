@@ -171,6 +171,13 @@ enum GET_AFE_INDEX_BYTE
     RETRIEVE_AFE_ACCELEROMETER = 0x04
 };
 
+// index bytes for dump registers
+enum DUMP_REGISTER_INDEX_BYTE
+{
+    DUMP_REGISTER_MAX30101 = 0x03,
+    DUMP_REGISTER_ACCELEROMETER = 0x04
+};
+
 // index byte for enable sensor
 // 0x00 = disable, 0x01 = enable for the write bytes
 enum SENSOR_ENABLE_INDEX_BYTE
@@ -314,18 +321,24 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t setPulseWidth(uint16_t width);
     // reads the pulse width of MAX30101 LEDs
     uint16_t readPulseWidth();
-    uint8_t setSampleRate(uint16_t);
+    // sets the sample rate of the MAX30101
+    uint8_t setSampleRate(uint16_t sampleRate);
+    // reads the sample rate of the MAX30101
     uint16_t readSampleRate();
-    uint8_t setAdcRange(uint16_t);
+    // sets the dynamic range of MAX30101's ADC
+    uint8_t setAdcRange(uint16_t adcVal);
+    // returns the ADC range
     uint16_t readAdcRange();
     // helper function, just calls readByte
     uint8_t getMcuType();
+    // checks the version number of the bootloader on the chip
     int32_t getBootloaderInf();
-    // helper function, just calls writeByte
+    // helper function, just calls enableWrite
     uint8_t max30101Control(uint8_t enable);
     // helper function, just calls readByte
     uint8_t readMAX30101State();
-    uint8_t accelControl(uint8_t);
+    // helper function, just calls enableWrite
+    uint8_t accelControl(uint8_t accelSwitch);
     // helper function, just calls writeByte
     uint8_t setOutputMode(uint8_t outputType);
     // helper function, just calls writeByte
@@ -342,13 +355,20 @@ class SparkFun_Bio_Sensor_Hub{
     void writeRegisterAccel(uint8_t regAddr, uint8_t regVal);
     // reads the given register address for the MAX30101 sensor & returns the value
     uint8_t readRegisterMAX30101(uint8_t regAddr);
-    uint8_t readRegisterAccel(uint8_t);
+    // reads the given register address for the MAX30101 sensor
+    uint8_t readRegisterAccel(uint8_t regAddr);
+    // retrieves the attributes of the analog front end on MAX30101
     sensorAttr getAfeAttributesMAX30101();
+    // retrieves attributes of the analog front end on accel
     sensorAttr getAfeAttributesAccelerometer();
+    // returns all registers and register values sequentially of the MAX30101
     uint8_t dumpRegisterMAX30101(uint8_t regArray[]);
-    uint8_t dumpRegisterAccelerometer(uint8_t, uint8_t regArray[]);
-    uint8_t setAlgoRange(uint8_t);
-    uint8_t setAlgoStepSize(uint8_t);
+    // returns all registers and register values sequentially of the accel
+    uint8_t dumpRegisterAccelerometer(uint8_t numReg, uint8_t regArray[]);
+    // sets the target percentage of full-scale ADC
+    uint8_t setAlgoRange(uint8_t perc);
+    // changes the step size toward the target for AGC algorithm
+    uint8_t setAlgoStepSize(uint8_t step);
     uint8_t setAlgoSensitivity(uint8_t);
     uint8_t setAlgoSamples(uint8_t);
     uint8_t setMaximFastCoef(int32_t, int32_t, int32_t);
@@ -358,9 +378,9 @@ class SparkFun_Bio_Sensor_Hub{
     // helper function, just calls readByte
     uint8_t readAlgoSamples();
     uint8_t readMaximFastCoef(int32_t coefArr[3]);
-    // helper function, just calls writeByte
+    // helper function, just calls enableWrite
     uint8_t agcAlgoControl(uint8_t enable);
-    // helper function, just calls writeByte
+    // helper function, just calls enableWrite
     uint8_t maximFastAlgoControl(uint8_t mode);
     bool setNumPages(uint8_t);
     bool eraseFlash();
@@ -400,7 +420,7 @@ class SparkFun_Bio_Sensor_Hub{
 
     // functions
 
-    uint8_t enableWrite(uint8_t, uint8_t, uint8_t);
+    uint8_t enableWrite(uint8_t _familyByte, uint8_t _indexByte, uint8_t _enableByte);
     // writes 3 bytes
     uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);
     // writes 4 bytes (last one being uint8_t)
