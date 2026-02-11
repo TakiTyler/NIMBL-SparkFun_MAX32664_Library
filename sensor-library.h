@@ -293,7 +293,9 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t bpmSenArrTwo[MAXFAST_ARRAY_SIZE + MAXFAST_EXTENDED_DATA + MAX30101_LED_ARRAY]{};
 
     // constructor
-    SparkFun_Bio_Sensor_Hub(uint8_t* resetPort, uint8_t* resetOut, uint16_t resetBit, uint8_t* mfioPort, uint8_t* mfioOut, uint16_t mfioBit, uint8_t address);
+    SparkFun_Bio_Sensor_Hub(volatile uint8_t* resetPort, volatile uint8_t* resetOut, uint16_t resetBit,
+                            volatile uint8_t* mfioPort, volatile uint8_t* mfioOut, volatile uint8_t* mfioRen, uint16_t mfioBit,
+                            uint8_t address);
 
     //// functions ////
 
@@ -434,6 +436,7 @@ class SparkFun_Bio_Sensor_Hub{
 
     volatile uint8_t* _mfioPort;
     volatile uint8_t* _mfioOut;
+    volatile uint8_t* _mfioRen;
     uint16_t _mfioBit;
 
     uint8_t _address;
