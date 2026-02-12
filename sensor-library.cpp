@@ -8,6 +8,8 @@
 #define SDA BIT2
 #define SCL BIT3
 
+#define DEBUG true
+
 extern void uart_write_string(const char *str);
 extern void uart_write_int(int num);
 
@@ -46,8 +48,7 @@ SparkFun_Bio_Sensor_Hub::SparkFun_Bio_Sensor_Hub(volatile uint8_t* resetPort, vo
 
 uint8_t SparkFun_Bio_Sensor_Hub::begin()
 {
-
-    uart_write_string("text 1\n");
+    if(DEBUG) uart_write_string("\tbegin part 1\n");
 
     // validate that pins ARE assigned
     if (_resetPort == nullptr || _mfioPort == nullptr)
@@ -55,19 +56,19 @@ uint8_t SparkFun_Bio_Sensor_Hub::begin()
         return 0xFF; // MAX32664 general error code
     }
 
-    uart_write_string("text 2\n");
+    if(DEBUG) uart_write_string("\tbegin part 2\n");
 
     // pull mfio high in reset for 10ms
     *_mfioOut |= _mfioBit;    // write mfio high
     *_resetOut &= ~_resetBit; // write reset low
     __delay_cycles(10000);    // 10ms delay @ 1MHz
 
-    uart_write_string("text 3\n");
+    if(DEBUG) uart_write_string("\tbegin part 3\n");
 
     *_resetOut |= _resetBit; // write reset high
     __delay_cycles(1000000); // 1000ms delay @ 1MHz
 
-    uart_write_string("text 4\n");
+    if(DEBUG) uart_write_string("\tbegin part 4\n");
 
     // set mfio to input
     // pulling enable is always offset by 0x06 (P(x) is at 0x06, P(y) is at 0x07 (x = odd #, y = even #))
@@ -75,12 +76,12 @@ uint8_t SparkFun_Bio_Sensor_Hub::begin()
     *_mfioRen |= _mfioBit;
     *_mfioOut |= _mfioBit;
 
-    uart_write_string("text 5\n");
+    if(DEBUG) uart_write_string("\tbegin part 5\n");
 
     // verify MAX32664 returned 0x00 (READ_DEVICE_MODE = 0x02)
     uint8_t responseByte = readByte(READ_DEVICE_MODE, 0x00);
 
-    uart_write_string("text 6\n");
+    if(DEBUG) uart_write_string("\tbegin part 6\n");
 
     return responseByte;
 }
@@ -1283,125 +1284,226 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeBytes(uint8_t _familyByte, uint8_t _indexB
     return statusByte;
 }
 
+// 2 byte version
 uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByte)
 {
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 1\n");
 
-    if (UCB0STATW & UCBBUSY) {
-        UCB0CTLW0 |= UCSWRST;  // Put in reset
-        UCB0CTLW0 &= ~UCSWRST; // Release reset
+    if (UCB0STATW & UCBBUSY)
+    {
+        UCB0CTLW0 |= UCSWRST;   // put in reset
+        UCB0CTLW0 &= ~UCSWRST;  // release reset
     }
+    
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 2\n");
 
     uint8_t returnByte = 0xFF;
     uint8_t statusByte = 0x00;
 
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 3\n");
+
     // write the family & index byte
-    UCB0I2CSA = _address;        // set slave address
-    UCB0CTLW0 |= UCTR | UCTXSTT; // transmitter mode & start condition
+    UCB0I2CSA = this->_address;     // set slave address
+    UCB0CTLW0 |= UCTR | UCTXSTT;    // transmitter mode & start condition
+
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 4\n");
 
     while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG){
+    if(UCB0IFG & UCNACKIFG)
+    {
         UCB0CTLW0 |= UCTXSTP;
+        UCB0IFG &= ~UCNACKIFG;  // clear flag
         return 0xEE;
     }
+    
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 5\n");
 
-    while (!(UCB0IFG & UCTXIFG));                    // wait for tx buffer
-    UCB0TXBUF = _familyByte; // send family byte
+    while (!(UCB0IFG & UCTXIFG));   // wait for tx buffer
+    UCB0TXBUF = _familyByte;        // send family byte
 
-    while (!(UCB0IFG & UCTXIFG));                   // wait for tx buffer
-    UCB0TXBUF = _indexByte; // send family byte
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 6 (transmitted family byte)\n");
 
-    while (UCB0CTLW0 & UCTXSTT);                 // wait for start bit to clear
-    UCB0CTLW0 |= UCTXSTP; // generate stop condition
-    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
+    while (!(UCB0IFG & UCTXIFG));   // wait for tx buffer
+    UCB0TXBUF = _indexByte;         // send index byte
+
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 7 (transmitted index byte)\n");
+
+    while (UCB0CTLW0 & UCTXSTT);    // wait for start bit to clear
+    UCB0CTLW0 |= UCTXSTP;           // generate stop condition
+    while (UCB0CTLW0 & UCTXSTP);    // wait for stop to finish
+
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 8\n");
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
+
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 9\n");
 
     // read back status bit
     UCB0CTLW0 &= ~UCTR;   // receiver mode
     UCB0CTLW0 |= UCTXSTT; // start condition
 
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 10\n");
+
     while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG){
+    if(UCB0IFG & UCNACKIFG)
+    {
         UCB0CTLW0 |= UCTXSTP;
+        UCB0IFG &= ~UCNACKIFG;  // clear flag
         return 0xEE;
     }
+    
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 11\n");
 
     // read status byte
-    while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
-    statusByte = UCB0RXBUF;
+    while (!(UCB0IFG & UCTXIFG));   // wait until interrupt
+    statusByte = UCB0RXBUF;         // obtain status byte
+
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 12 (got status byte)\n");
 
     // read return byte
-    UCB0CTLW0 |= UCTXSTP; // set stop before reading the last byte
-    while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
-    returnByte = UCB0RXBUF;
+    UCB0CTLW0 |= UCTXSTP;           // set stop before reading the last byte
+    while (!(UCB0IFG & UCTXIFG));   // wait until interrupt
+    returnByte = UCB0RXBUF;         // obtain return byte
 
-    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 13 (got return byte)\n");
+
+    while (UCB0CTLW0 & UCTXSTP);    // wait for stop to finish
+
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 14\n");
 
     // check if the statusByte isn't 0x00 to return the error
 
     if (statusByte != SFE_BIO_SUCCESS)
     {
+        if(DEBUG)
+        {
+            uart_write_string("\treadByte (2 bytes) part 15 (ERROR) statusByte = ");
+            uart_write_int(statusByte);
+            uart_write_string("\n");
+        }
         return statusByte;
     }
-
+    
+    if(DEBUG)
+    {
+        uart_write_string("\treadByte (2 bytes) part 15 (SUCCESS) returnByte = ");
+        uart_write_int(returnByte);
+        uart_write_string("\n");
+    }
     return returnByte;
 }
 
 // similar to above, but we just add the write
 uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte)
 {
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 1\n");
+
+    if (UCB0STATW & UCBBUSY)
+    {
+        UCB0CTLW0 |= UCSWRST;   // put in reset
+        UCB0CTLW0 &= ~UCSWRST;  // release reset
+    }
+
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 2\n");    
+    
     uint8_t statusByte = 0xFF;
     uint8_t returnByte = 0x00;
 
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 3\n");
+
     // write the three bytes
-    UCB0I2CSA = this->_address;
-    UCB0CTLW0 = UCTR | UCTXSTT;
+    UCB0I2CSA = this->_address;     // set slave address
+    UCB0CTLW0 |= UCTR | UCTXSTT;    // transmitter mode & start condition
+
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 4\n");
 
     while(UCB0CTLW0 & UCTXSTT);
     if(UCB0IFG & UCNACKIFG)
     {
         UCB0CTLW0 |= UCTXSTP;
+        UCB0IFG &= ~UCNACKIFG;  // clear flag
         return 0xEE;
     }
 
-    while (!(UCB0IFG & UCTXIFG));
-    UCB0TXBUF = _familyByte;
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 5\n");
 
-    while (!(UCB0IFG & UCTXIFG));
-    UCB0TXBUF = _indexByte;
+    while (!(UCB0IFG & UCTXIFG));   // wait for tx buffer
+    UCB0TXBUF = _familyByte;        // send family byte
 
-    while (!(UCB0IFG & UCTXIFG));
-    UCB0TXBUF = _writeByte;
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 6 (transmitted family byte)\n");
 
-    while (UCB0IFG & UCTXIFG);                 // wait for start bit to clear
-    UCB0CTLW0 |= UCTXSTP; // generate stop condition
-    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
+    while (!(UCB0IFG & UCTXIFG));   // wait for tx buffer
+    UCB0TXBUF = _indexByte;         // send index byte
+
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 7 (transmitted index byte)\n");
+
+    while (!(UCB0IFG & UCTXIFG));   // wait for tx buffer
+    UCB0TXBUF = _writeByte;         // send write byte
+
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 8 (transmitted write byte)\n");
+
+    while (!(UCB0IFG & UCTXIFG));    // wait for start bit to clear
+    UCB0CTLW0 |= UCTXSTP;           // generate stop condition
+    while (UCB0CTLW0 & UCTXSTP);    // wait for stop to finish
+
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 9\n");
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
 
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 10\n");
+
     // read the status + data
-    UCB0CTLW0 &= ~UCTR;   // receiver mode
-    UCB0CTLW0 |= UCTXSTT; // start condition
+    UCB0CTLW0 &= ~UCTR;     // receiver mode
+    UCB0CTLW0 |= UCTXSTT;   // start condition
+
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 11\n");
 
     while(UCB0CTLW0 & UCTXSTT);
+    if(UCB0IFG & UCNACKIFG)
+    {
+        UCB0CTLW0 |= UCTXSTP;
+        UCB0IFG &= ~UCNACKIFG;  // clear flag
+        return 0xEE;
+    }
+
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 12\n");
 
     // read status byte
-    while (!(UCB0IFG & UCRXIFG)); // wait until interrupt
-    statusByte = UCB0RXBUF;
+    while (!(UCB0IFG & UCRXIFG));   // wait until interrupt
+    statusByte = UCB0RXBUF;         // obtain status byte
+
+    if(DEBUG)
+    {
+        uart_write_string("\treadByte (3 bytes) part 13 statusByte = ");
+        uart_write_int(statusByte);
+        uart_write_string("\n");
+    }
 
     // read return byte
-    UCB0CTLW0 |= UCTXSTP; // set stop before reading the last byte
-    while (!(UCB0IFG & UCRXIFG)); // wait until interrupt
-    returnByte = UCB0RXBUF;
+    UCB0CTLW0 |= UCTXSTP;           // set stop before reading the last byte
+    while (!(UCB0IFG & UCRXIFG));   // wait until interrupt
+    returnByte = UCB0RXBUF;         // obtain return byte
+    
+    if(DEBUG)
+    {
+        uart_write_string("\treadByte (3 bytes) part 14 returnByte = ");
+        uart_write_int(returnByte);
+        uart_write_string("\n");
+    }
+    
+    while (UCB0CTLW0 & UCTXSTP);    // wait for stop to finish
 
-    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 15\n");
 
     // check if the statusByte isn't 0x00 to return the error
 
     if (statusByte != SFE_BIO_SUCCESS)
     {
+        if(DEBUG) uart_write_string("\treadByte (3 bytes) part 16 (ERROR)\n");
         return statusByte;
     }
+    
+    if(DEBUG) uart_write_string("\treadByte (3 bytes) part 16 (SUCCESS)\n");
 
     return returnByte;
 }
@@ -1413,7 +1515,7 @@ uint16_t SparkFun_Bio_Sensor_Hub::readIntByte(uint8_t _familyByte, uint8_t _inde
 
     // write the three bytes
     UCB0I2CSA = this->_address;
-    UCB0CTLW0 = UCTR | UCTXSTT;
+    UCB0CTLW0 |= UCTR | UCTXSTT;
 
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
@@ -1459,44 +1561,93 @@ uint16_t SparkFun_Bio_Sensor_Hub::readIntByte(uint8_t _familyByte, uint8_t _inde
     return returnVal;
 }
 
+// uses uint8_t user array
 uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, const size_t _len, uint8_t userArray[])
 {
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 1\n");
+
     uint8_t statusByte = 0xFF;
+
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 2\n");
 
     // write the three bytes
     UCB0I2CSA = this->_address;
-    UCB0CTLW0 = UCTR | UCTXSTT;
+    UCB0CTLW0 |= UCTR | UCTXSTT;
+
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 3\n");
+
+    while(UCB0CTLW0 & UCTXSTT);
+    if(UCB0IFG & UCNACKIFG)
+    {
+        UCB0CTLW0 |= UCTXSTP;
+        UCB0IFG &= ~UCNACKIFG;  // clear flag
+        return 0xEE;
+    }
+
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 4\n");
 
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 5\n");
+
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
+
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 6\n");
 
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
-    while (UCB0CTLW0 & UCTXSTT);                 // wait for start bit to clear
-    UCB0CTLW0 |= UCTXSTP; // generate stop condition
-    while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 7\n");
+
+    while (UCB0CTLW0 & UCTXSTT);    // wait for start bit to clear
+    UCB0CTLW0 |= UCTXSTP;           // generate stop condition
+    while (UCB0CTLW0 & UCTXSTP);    // wait for stop to finish
+
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 8\n");
 
     __delay_cycles(2000); // 2ms delay @ 1MHz
+
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 9\n");
 
     // read the status + data
     UCB0CTLW0 &= ~UCTR;   // receiver mode
     UCB0CTLW0 |= UCTXSTT; // start condition
 
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 10\n");
+
+    while(UCB0CTLW0 & UCTXSTT);
+    if(UCB0IFG & UCNACKIFG)
+    {
+        UCB0CTLW0 |= UCTXSTP;
+        UCB0IFG &= ~UCNACKIFG;  // clear flag
+        return 0xEE;
+    }
+
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 11\n");
+
     // read status byte
     while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
     statusByte = UCB0RXBUF;
+
+    if(DEBUG)
+    {
+        uart_write_string("\treadMultipleBytes (uint8_t) part 11 statusByte = ");
+        uart_write_int(statusByte);
+        uart_write_string("\n");
+    }
 
     // check for an error
     if (statusByte != SFE_BIO_SUCCESS)
     {
         UCB0CTLW0 |= UCTXSTP;
+        UCB0IFG &= ~UCNACKIFG;  // clear flag
         return statusByte;
     }
 
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 12\n");
+    
     for (size_t i = 0; i < _len; i++)
     {
         if (i == (_len - 1))
@@ -1506,7 +1657,15 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
         while (!(UCB0IFG & UCRXIFG))
             ;
         userArray[i] = UCB0RXBUF;
+        if(DEBUG)
+        {
+            uart_write_string("\treadMultipleBytes (uint8_t) finished loop userArray[i] = ");
+            uart_write_int(userArray[i]);
+            uart_write_string("\n");
+        }
     }
+    
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 13\n");
 
     return statusByte;
 }
@@ -1517,7 +1676,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
 
     // write the three bytes
     UCB0I2CSA = this->_address;
-    UCB0CTLW0 = UCTR | UCTXSTT;
+    UCB0CTLW0 |= UCTR | UCTXSTT;
 
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
@@ -1666,6 +1825,12 @@ void uart_write_int(int num)
     }
 }
 
+void uart_clear_screen() {
+    // ESC [ 2 J  = Clear entire screen
+    // ESC [ H    = Move cursor to home (top-left)
+    uart_write_string("\x1B[2J\x1B[H"); 
+}
+
 // Helper to set pins to a "High" state using internal pull-ups
 void b_high(uint8_t pin) {
     P1DIR &= ~pin; // Set to input
@@ -1798,6 +1963,7 @@ int main(void)
 
     // init uart
     initUART();
+    uart_clear_screen();
     __delay_cycles(100000);
     uart_write_string("\r\n--- SYSTEM STARTUP ---\n");
 
@@ -1849,7 +2015,7 @@ int main(void)
                                    &P2DIR, &P2OUT, &P2REN, BIT1,
                                    BIO_ADDRESS);
 
-    uart_write_string("Created a sensor instance. Beginning sensor.");
+    uart_write_string("Created a sensor instance. Beginning sensor.\n");
 
     uint8_t result = bioHub.begin();
 
