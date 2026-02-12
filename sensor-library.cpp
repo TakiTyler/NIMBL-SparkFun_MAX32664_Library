@@ -145,45 +145,69 @@ uint8_t SparkFun_Bio_Sensor_Hub::setOperatingMode(uint8_t selection)
 uint8_t SparkFun_Bio_Sensor_Hub::configBpm(uint8_t mode)
 {
 
+    if(DEBUG) uart_write_string("\tconfigBpm part 1\n");
+
     if (mode != MODE_ONE && mode != MODE_TWO)
     {
+        if(DEBUG) uart_write_string("\tconfigBpm (INPUT CORRECT MODE)\n");
         return 0xEE;
     }
 
+    if(DEBUG) uart_write_string("\tconfigBpm part 2\n");
+
     uint8_t status;
+
+    if(DEBUG) uart_write_string("\tconfigBpm part 3\n");
 
     status = setOutputMode(ALGO_DATA);
     if (status != SFE_BIO_SUCCESS)
     {
+        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ setOutputMode)\n");
         return status;
     }
+
+    if(DEBUG) uart_write_string("\tconfigBpm part 4\n");
 
     status = setFifoThreshold(0x01); // one sample before interrupt is fired
     if (status != SFE_BIO_SUCCESS)
     {
+        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ setFifoThreshold)\n");
         return status;
     }
+
+    if(DEBUG) uart_write_string("\tconfigBpm part 5\n");
 
     status = agcAlgoControl(ENABLE); // one sample before interrupt is fired
     if (status != SFE_BIO_SUCCESS)
     {
+        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ acgAlgoControl)\n");
         return status;
     }
+
+    if(DEBUG) uart_write_string("\tconfigBpm part 6\n");
 
     status = max30101Control(ENABLE);
     if (status != SFE_BIO_SUCCESS)
     {
+        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ max30101Control)\n");
         return status;
     }
+
+    if(DEBUG) uart_write_string("\tconfigBpm part 7\n");
 
     status = maximFastAlgoControl(mode);
     if (status != SFE_BIO_SUCCESS)
     {
+        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ maximFastAlgoControl)\n");
         return status;
     }
 
+    if(DEBUG) uart_write_string("\tconfigBpm part 8\n");
+
     _userSelectedMode = mode;
     _sampleRate = readAlgoSamples();
+
+    if(DEBUG) uart_write_string("\tconfigBpm part 9\n");
 
     __delay_cycles(1000000); // 1 second delay @ 1MHz
     return SFE_BIO_SUCCESS;
@@ -1358,14 +1382,25 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
     while (!(UCB0IFG & UCTXIFG));   // wait until interrupt
     statusByte = UCB0RXBUF;         // obtain status byte
 
-    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 12 (got status byte)\n");
+    if(DEBUG)
+    {
+        uart_write_string("\treadByte (2 bytes) part 12 statusByte = ");
+        uart_write_int(statusByte);
+        uart_write_string("\n");
+    }
 
     // read return byte
     UCB0CTLW0 |= UCTXSTP;           // set stop before reading the last byte
     while (!(UCB0IFG & UCTXIFG));   // wait until interrupt
     returnByte = UCB0RXBUF;         // obtain return byte
 
-    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 13 (got return byte)\n");
+    if(DEBUG)
+    {
+        uart_write_string("\treadByte (2 bytes) part 13 returnByte = ");
+        uart_write_int(returnByte);
+        uart_write_string("\n");
+    }
+
 
     while (UCB0CTLW0 & UCTXSTP);    // wait for stop to finish
 
@@ -1375,21 +1410,12 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
 
     if (statusByte != SFE_BIO_SUCCESS)
     {
-        if(DEBUG)
-        {
-            uart_write_string("\treadByte (2 bytes) part 15 (ERROR) statusByte = ");
-            uart_write_int(statusByte);
-            uart_write_string("\n");
-        }
+        if(DEBUG) uart_write_string("\treadByte (2 bytes) part 15 (ERROR)\n");
         return statusByte;
     }
     
-    if(DEBUG)
-    {
-        uart_write_string("\treadByte (2 bytes) part 15 (SUCCESS) returnByte = ");
-        uart_write_int(returnByte);
-        uart_write_string("\n");
-    }
+    if(DEBUG) uart_write_string("\treadByte (2 bytes) part 15 (SUCCESS)\n");
+
     return returnByte;
 }
 
@@ -1510,6 +1536,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
 
 uint16_t SparkFun_Bio_Sensor_Hub::readIntByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte)
 {
+
     uint16_t returnVal = 0;
     uint8_t statusByte = 0xFF;
 
@@ -1584,24 +1611,24 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
         return 0xEE;
     }
 
-    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 4\n");
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 4 (transmitted family byte)\n");
 
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
-    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 5\n");
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 5 (transmitted index byte)\n");
 
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _indexByte;
 
-    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 6\n");
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 6 (transmitted write byte)\n");
 
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
     if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 7\n");
 
-    while (UCB0CTLW0 & UCTXSTT);    // wait for start bit to clear
+    while (!(UCB0IFG & UCTXIFG));    // wait for start bit to clear
     UCB0CTLW0 |= UCTXSTP;           // generate stop condition
     while (UCB0CTLW0 & UCTXSTP);    // wait for stop to finish
 
@@ -1628,12 +1655,12 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
     if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 11\n");
 
     // read status byte
-    while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
+    while (!(UCB0IFG & UCRXIFG)); // wait until interrupt
     statusByte = UCB0RXBUF;
 
     if(DEBUG)
     {
-        uart_write_string("\treadMultipleBytes (uint8_t) part 11 statusByte = ");
+        uart_write_string("\treadMultipleBytes (uint8_t) part 12 statusByte = ");
         uart_write_int(statusByte);
         uart_write_string("\n");
     }
@@ -1641,12 +1668,15 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
     // check for an error
     if (statusByte != SFE_BIO_SUCCESS)
     {
+        if(DEBUG) uart_write_string("\treadMultipleBytes (ERROR) statusByte != SFE_BIO_SUCCESS\n");
         UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;  // clear flag
+        while(!(UCB0IFG & UCRXIFG));
+        uint8_t dummy = UCB0RXBUF;
+        while(UCB0CTLW0 & UCTXSTP);
         return statusByte;
     }
 
-    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 12\n");
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 13\n");
     
     for (size_t i = 0; i < _len; i++)
     {
@@ -1654,8 +1684,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
         {
             UCB0CTLW0 |= UCTXSTP; // stop before last byte
         }
-        while (!(UCB0IFG & UCRXIFG))
-            ;
+        while (!(UCB0IFG & UCRXIFG));
         userArray[i] = UCB0RXBUF;
         if(DEBUG)
         {
@@ -1665,8 +1694,9 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
         }
     }
     
-    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 13\n");
+    if(DEBUG) uart_write_string("\treadMultipleBytes (uint8_t) part 14\n");
 
+    while(UCB0CTLW0 & UCTXSTP);
     return statusByte;
 }
 
@@ -2038,6 +2068,11 @@ int main(void)
         uart_write_string(".");
         uart_write_int(hubVer.revision);
         uart_write_string("\r\n");
+
+        uint8_t error = bioHub.configBpm(MODE_ONE);
+
+        if(error == SFE_BIO_SUCCESS) uart_write_string("Sensor Configured!");
+        else uart_write_string("Error in configuring sensor.");
     }
     else {
         uart_write_string("Error: Initialization failed. Code: ");
