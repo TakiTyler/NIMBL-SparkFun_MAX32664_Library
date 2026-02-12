@@ -46,28 +46,28 @@ SparkFun_Bio_Sensor_Hub::SparkFun_Bio_Sensor_Hub(volatile uint8_t* resetPort, vo
 
 uint8_t SparkFun_Bio_Sensor_Hub::begin()
 {
-    uart_write_string("Checking if pins are assigned...\n");
+
+    uart_write_string("text 1\n");
 
     // validate that pins ARE assigned
     if (_resetPort == nullptr || _mfioPort == nullptr)
     {
-        uart_write_string("Pins NOT assigned.\n");
         return 0xFF; // MAX32664 general error code
     }
 
-    uart_write_string("Pins are assigned!\nWriting mfio high & reset low.\n");
+    uart_write_string("text 2\n");
 
     // pull mfio high in reset for 10ms
     *_mfioOut |= _mfioBit;    // write mfio high
     *_resetOut &= ~_resetBit; // write reset low
     __delay_cycles(10000);    // 10ms delay @ 1MHz
 
-    uart_write_string("Passed the first delay, writing reset high.\n");
+    uart_write_string("text 3\n");
 
     *_resetOut |= _resetBit; // write reset high
     __delay_cycles(1000000); // 1000ms delay @ 1MHz
 
-    uart_write_string("Passed the second delay, set MFIO to input.\n");
+    uart_write_string("text 4\n");
 
     // set mfio to input
     // pulling enable is always offset by 0x06 (P(x) is at 0x06, P(y) is at 0x07 (x = odd #, y = even #))
@@ -75,12 +75,12 @@ uint8_t SparkFun_Bio_Sensor_Hub::begin()
     *_mfioRen |= _mfioBit;
     *_mfioOut |= _mfioBit;
 
-    uart_write_string("Having chip read byte.\n");
+    uart_write_string("text 5\n");
 
     // verify MAX32664 returned 0x00 (READ_DEVICE_MODE = 0x02)
     uint8_t responseByte = readByte(READ_DEVICE_MODE, 0x00);
 
-    uart_write_string("Chip has readByte, returning.\n");
+    uart_write_string("text 6\n");
 
     return responseByte;
 }
@@ -1291,52 +1291,34 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
         UCB0CTLW0 &= ~UCSWRST; // Release reset
     }
 
-    uart_write_string("1\n");
-
     uint8_t returnByte = 0xFF;
     uint8_t statusByte = 0x00;
-
-    uart_write_string("2\n");
 
     // write the family & index byte
     UCB0I2CSA = _address;        // set slave address
     UCB0CTLW0 |= UCTR | UCTXSTT; // transmitter mode & start condition
 
-    uart_write_string("3\n");
-
     while(UCB0CTLW0 & UCTXSTT);
     if(UCB0IFG & UCNACKIFG){
         UCB0CTLW0 |= UCTXSTP;
         return 0xEE;
     }
 
-    uart_write_string("4\n");
-
     while (!(UCB0IFG & UCTXIFG));                    // wait for tx buffer
     UCB0TXBUF = _familyByte; // send family byte
 
-    uart_write_string("5\n");
-
     while (!(UCB0IFG & UCTXIFG));                   // wait for tx buffer
     UCB0TXBUF = _indexByte; // send family byte
-
-    uart_write_string("6\n");
 
     while (UCB0CTLW0 & UCTXSTT);                 // wait for start bit to clear
     UCB0CTLW0 |= UCTXSTP; // generate stop condition
     while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
 
-    uart_write_string("7\n");
-
     __delay_cycles(2000); // 2ms delay @ 1MHz
-
-    uart_write_string("8\n");
 
     // read back status bit
     UCB0CTLW0 &= ~UCTR;   // receiver mode
     UCB0CTLW0 |= UCTXSTT; // start condition
-
-    uart_write_string("9\n");
 
     while(UCB0CTLW0 & UCTXSTT);
     if(UCB0IFG & UCNACKIFG){
@@ -1344,26 +1326,18 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
         return 0xEE;
     }
 
-    uart_write_string("10\n");
-
     // read status byte
     while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
     statusByte = UCB0RXBUF;
-
-    uart_write_string("11\n");
 
     // read return byte
     UCB0CTLW0 |= UCTXSTP; // set stop before reading the last byte
     while (!(UCB0IFG & UCTXIFG)); // wait until interrupt
     returnByte = UCB0RXBUF;
 
-    uart_write_string("12\n");
-
     while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
 
     // check if the statusByte isn't 0x00 to return the error
-
-    uart_write_string("13\n");
 
     if (statusByte != SFE_BIO_SUCCESS)
     {
@@ -1383,6 +1357,13 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
     UCB0I2CSA = this->_address;
     UCB0CTLW0 = UCTR | UCTXSTT;
 
+    while(UCB0CTLW0 & UCTXSTT);
+    if(UCB0IFG & UCNACKIFG)
+    {
+        UCB0CTLW0 |= UCTXSTP;
+        return 0xEE;
+    }
+
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _familyByte;
 
@@ -1392,7 +1373,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = _writeByte;
 
-    while (UCB0CTLW0 & UCTXSTT);                 // wait for start bit to clear
+    while (UCB0IFG & UCTXIFG);                 // wait for start bit to clear
     UCB0CTLW0 |= UCTXSTP; // generate stop condition
     while (UCB0CTLW0 & UCTXSTP); // wait for stop to finish
 
@@ -1401,6 +1382,8 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
     // read the status + data
     UCB0CTLW0 &= ~UCTR;   // receiver mode
     UCB0CTLW0 |= UCTXSTT; // start condition
+
+    while(UCB0CTLW0 & UCTXSTT);
 
     // read status byte
     while (!(UCB0IFG & UCRXIFG)); // wait until interrupt
@@ -1639,9 +1622,9 @@ void initUART()
     UCA0CTLW0 |= UCSWRST;       // eUSCI in reset
     UCA0CTLW0 |= UCSSEL__SMCLK; // choose smclk
 
-    UCA0BR0 = 104;
+    UCA0BR0 = 8;
     UCA0BR1 = 0x00;
-    UCA0MCTLW = 0x1100;
+    UCA0MCTLW = 0xD600;
 
     UCA0CTLW0 &= ~UCSWRST; // release from reset
 }
@@ -1726,7 +1709,55 @@ bool b_write(uint8_t data) {
     return ack;
 }
 
-void runI2CScanner()
+uint8_t runI2CScanner() {
+
+    uart_write_string("Hardware Scan Starting...\r\n");
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        UCB0I2CSA = addr;
+        UCB0CTLW0 |= UCTR | UCTXSTT; // Start + Write
+
+        uint32_t timeout = 5000;
+        while ((UCB0CTLW0 & UCTXSTT) && --timeout); // Wait for Address
+
+        if (timeout == 0) {
+            // Bus is physically stuck - Reset the whole module
+            UCB0CTLW0 |= UCSWRST;
+            UCB0CTLW0 &= ~UCSWRST;
+            continue;
+        }
+
+        if (!(UCB0IFG & UCNACKIFG)) { // SUCCESS: Device ACKed
+            uart_write_string("Found i2c device at: ");
+            uart_write_int(addr);
+            uart_write_string("\r\n");
+
+            // clean-up
+            UCB0CTLW0 |= UCTXSTP;
+
+            uint32_t stopTimeout = 1000;
+            while((UCB0CTLW0 & UCTXSTP) && --stopTimeout);
+
+            UCB0IFG &= ~UCNACKIFG;
+
+            if(stopTimeout == 0)
+            {
+                UCB0CTLW0 |= UCSWRST;
+                UCB0CTLW0 &= ~UCSWRST;
+            }
+
+            uart_write_string("Returning 1\n");
+            return 1;
+        }
+
+        UCB0CTLW0 |= UCTXSTP;      // Always send STOP to release bus
+        while (UCB0CTLW0 & UCTXSTP);
+        UCB0IFG &= ~UCNACKIFG;     // Clear NACK flag for next loop
+    }
+
+    return 0;
+}
+
+void runI2CScannerBitBang()
 {
     uart_write_string("Starting Bit-Bang I2C Scan...\r\n");
 
@@ -1747,7 +1778,7 @@ void runI2CScanner()
 
         if(found)
         {
-            uart_write_string("Found device at: ");
+            uart_write_string("Found bit-bang device at: ");
             uart_write_int(addr);
             uart_write_string("\r\n");
         }
@@ -1767,19 +1798,49 @@ int main(void)
 
     // init uart
     initUART();
+    __delay_cycles(100000);
+    uart_write_string("\r\n--- SYSTEM STARTUP ---\n");
 
-    // 1. Reset P1.2 and P1.3 to standard GPIO mode (NOT I2C mode)
-    P1SEL1 &= ~(BIT2 | BIT3);
+    // ensure i2c lines are high
     P1SEL0 &= ~(BIT2 | BIT3);
+    P1SEL1 &= ~(BIT2 | BIT3);
+    P1DIR &= ~(BIT2 | BIT3); // inputs
+    P1REN &= ~(BIT2 | BIT3); // external resistors
 
-    // 2. Enable Internal Pull-ups (VITAL without resistors)
-    P1REN |= (BIT2 | BIT3);
-    P1OUT |= (BIT2 | BIT3);
-    P1DIR &= ~(BIT2 | BIT3); // Start as inputs (High)
+    // toggle scl to clear
+    P1DIR |= BIT3;
+    for(int i = 0; i < 9; i++)
+    {
+        P1OUT &= ~BIT3;
+        __delay_cycles(100);
+        P1OUT |= BIT3;
+        __delay_cycles(100);
+    }
 
-    P1DIR |= BIT0; // Set P1.0 to output direction
+    uart_write_string("I2C Bus Recovered (ideally).\n");
 
-    runI2CScanner();
+    // switch to hardware i2c mode
+    P1SEL0 |= (BIT2 | BIT3);
+    UCB0CTLW0 = UCSWRST; // enable reset
+    UCB0CTLW0 |= UCMST | UCMODE_3 | UCSYNC | UCSSEL__SMCLK | UCSWRST;
+    UCB0BRW = 10;
+    UCB0CTLW0 &= ~UCSWRST;
+
+    uint8_t tester = runI2CScanner();
+
+    // hardware scan
+    if(tester == 0)
+    {
+        uart_write_string("CRITICAL: Hardware I2C could not find sensor.\n");
+        runI2CScannerBitBang(); // last resort
+        return;
+    }
+    else
+    {
+        uart_write_string("We exited the scanner!\n");
+    }
+
+    // init library
 
     uart_write_string("\n--- Initializing Bio Sensor ---\n");
 
@@ -1790,17 +1851,33 @@ int main(void)
 
     uart_write_string("Created a sensor instance. Beginning sensor.");
 
-    P1OUT |= BIT0; // Turn on the LED
     uint8_t result = bioHub.begin();
-    P1OUT &= ~BIT0; // Turn off the LED
 
-    if(result == 0x00){
-        uart_write_string("Sensor Hub Online!\n");
+    // check if we got a response
+    if(result == 0x00) {
+        uart_write_string("SUCCESS: Bio Sensor Online!\r\n");
+
+        // get mcu type
+        uint8_t mcuType = bioHub.getMcuType();
+        uart_write_string("MCU Type (0x01 expected): 0x");
+        uart_write_int(mcuType);
+        uart_write_string("\r\n");
+
+        // get sensor hub version
+        version hubVer = bioHub.readSensorHubVersion();
+        uart_write_string("Hub Version: ");
+        uart_write_int(hubVer.major);
+        uart_write_string(".");
+        uart_write_int(hubVer.minor);
+        uart_write_string(".");
+        uart_write_int(hubVer.revision);
+        uart_write_string("\r\n");
     }
-    else{
-        uart_write_string("Error: Sensor Hub failed to start. Code: ");
+    else {
+        uart_write_string("Error: Initialization failed. Code: ");
         uart_write_int(result);
-        uart_write_string("\n");
-        while(1); // Halt on error
+        uart_write_string("\r\n");
     }
+
+    while(1); // End of test
 }
