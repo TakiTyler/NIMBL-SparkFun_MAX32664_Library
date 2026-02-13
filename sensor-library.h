@@ -37,7 +37,7 @@
 #define WRITE_SET_THRESHOLD 0x01    // Index Byte for WRITE_INPUT(0x14)
 #define WRITE_EXTERNAL_TO_FIFO 0x00
 
-const uint8_t BIO_ADDRESS = 0x55;   // this should be fine...
+const uint8_t BIO_ADDRESS = 0x55;   // THIS IS CORRECT ADDRESS
 
 // the struct that holds all the important data
 struct bioData{
@@ -73,17 +73,17 @@ struct sensorAttr{
 // are indicators of success or failure of the previous transmission."
 // These hex codes are found in the MAX32664 USER GUIDE & have assigned names
 enum READ_STATUS_BYTE_VALUE{
-    SFE_BIO_SUCCESS = 0x00,
-    ERR_UNAVAIL_CMD = 0x01, // illegal Family Byte and/or Command Byte was used
-    ERR_UNAVAIL_FUNC = 0x02, // function is not implemented
-    ERR_DATA_FORMAT = 0x03, // incorrect number of bytes sent for the requested Family Byte
-    ERR_INPUT_VALUE = 0x04, // illegal configuration value was attempted to be set
-    ERR_TRY_AGAIN = 0x05, // device is busy, try again
-    ERR_BTLDR_GENERAL = 0x80, // general error while receiving/flashing a page during the bootloader sequence
-    ERR_BTLDR_CHECKSUM = 0x81, // checksum error while decrypting/checking page data
-    ERR_BTLDR_AUTH = 0x82, // authorization error
-    ERR_BTLDR_INVALID_APP = 0x83, // application not valid
-    ERR_UNKNOWN = 0xFF // unknown error
+    SFE_BIO_SUCCESS = 0x00,         // success!
+    ERR_UNAVAIL_CMD = 0x01,         // illegal Family Byte and/or Command Byte was used
+    ERR_UNAVAIL_FUNC = 0x02,        // function is not implemented
+    ERR_DATA_FORMAT = 0x03,         // incorrect number of bytes sent for the requested Family Byte
+    ERR_INPUT_VALUE = 0x04,         // illegal configuration value was attempted to be set
+    ERR_TRY_AGAIN = 0x05,           // device is busy, try again
+    ERR_BTLDR_GENERAL = 0x80,       // general error while receiving/flashing a page during the bootloader sequence
+    ERR_BTLDR_CHECKSUM = 0x81,      // checksum error while decrypting/checking page data
+    ERR_BTLDR_AUTH = 0x82,          // authorization error
+    ERR_BTLDR_INVALID_APP = 0x83,   // application not valid
+    ERR_UNKNOWN = 0xFF              // unknown error
 };
 
 // From the referenced github:
@@ -465,6 +465,8 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t readByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);
     // used when a register holds a 16-bit value
     uint16_t readIntByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);
+    // reads a variable number of 8-bit bytes into a buffer, 2 byte sending version
+    uint8_t readMultipleBytes(uint8_t _familyByte, uint8_t _indexByte, const size_t _len, uint8_t userArray[]);
     // reads a variable number of 8-bit bytes into a buffer
     uint8_t readMultipleBytes(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, const size_t _len, uint8_t userArray[]);
     // reads a variable number of 32-bit bytes into a buffer, designed for MaximFast Algorithm Coefficients
