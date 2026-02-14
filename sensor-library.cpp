@@ -23,13 +23,11 @@ SparkFun_Bio_Sensor_Hub::SparkFun_Bio_Sensor_Hub(volatile uint8_t* resetPort, vo
     // set the necessary pins
     _resetPort = resetPort;
     _resetOut = resetOut;
-    //    _resetOut = resetPort + 2; // out is always +2 bits offset from port (disabled for now)
     _resetBit = resetBit;
 
     _mfioPort = mfioPort;
     _mfioOut = mfioOut;
     _mfioRen = mfioRen;
-    //    _mfioOut = mfioPort + 2; // out is always +2 bits offset from port
     _mfioBit = mfioBit;
 
     _address = address;
@@ -90,6 +88,8 @@ uint8_t SparkFun_Bio_Sensor_Hub::begin()
 uint8_t SparkFun_Bio_Sensor_Hub::beginBootloader()
 {
 
+    if(DEBUG) uart_write_string("\tbeginBootloader start\n");
+
     // validate that pins ARE assigned
     if (_resetPort == nullptr || _mfioPort == nullptr)
     {
@@ -99,16 +99,17 @@ uint8_t SparkFun_Bio_Sensor_Hub::beginBootloader()
     // pull mfio high in reset for 10ms
     *_mfioOut &= ~_mfioBit;   // write mfio low
     *_resetOut &= ~_resetBit; // write reset low
-    __delay_cycles(10000);    // 10ms delay @ 1MHz
+    delay_ms(10);
 
     *_resetOut |= _resetBit; // write reset high
-    __delay_cycles(50000);   // 50ms delay @ 1MHz for the bootloader
+    delay_ms(50);
 
     // set mfio to output
     *_mfioOut |= _mfioBit;
 
     // verify MAX32664 returned 0x08 (READ_DEVICE_MODE = 0x02)
     uint8_t responseByte = readByte(READ_DEVICE_MODE, 0x00);
+    if(DEBUG) uart_write_string("\tbeginBootloader end\n");
     return responseByte;
 }
 
@@ -119,6 +120,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::readSensorHubStatus()
 
 uint8_t SparkFun_Bio_Sensor_Hub::setOperatingMode(uint8_t selection)
 {
+    if(DEBUG) uart_write_string("\tsetOperatingMode begin\n");
 
     // parameter validation (must be 0x00, 0x02, or 0x08)
     if (selection != EXIT_BOOTLOADER && selection != SFE_BIO_RESET && selection != ENTER_BOOTLOADER)
@@ -134,10 +136,11 @@ uint8_t SparkFun_Bio_Sensor_Hub::setOperatingMode(uint8_t selection)
     }
 
     // wait for a verification
-    __delay_cycles(100000); // 100ms delay @ 1MHz
+    delay_ms(100);
 
     // READ_DEVICE_MODE = 0x02
     uint8_t responseByte = readByte(READ_DEVICE_MODE, 0x00);
+    if(DEBUG) uart_write_string("\tsetOperatingMode end\n");
     return responseByte;
 }
 
@@ -215,6 +218,7 @@ uint8_t SparkFun_Bio_Sensor_Hub::configBpm(uint8_t mode)
 
 uint8_t SparkFun_Bio_Sensor_Hub::configSensor()
 {
+    if(DEBUG) uart_write_string("\tconfigSensor begin\n");
     uint8_t status;
 
     status = setOutputMode(SENSOR_DATA);
@@ -241,13 +245,15 @@ uint8_t SparkFun_Bio_Sensor_Hub::configSensor()
         return status;
     }
 
-    __delay_cycles(1000000); // 1 second delay @ 1MHz
+    delay_ms(1000);
+    if(DEBUG) uart_write_string("\tconfigSensor end\n");
     return SFE_BIO_SUCCESS;
 }
 
 uint8_t SparkFun_Bio_Sensor_Hub::configSensorBpm(uint8_t mode)
 {
 
+    if(DEBUG) uart_write_string("\tconfigSensorBPM begin\n");
     if (mode != MODE_ONE && mode != MODE_TWO)
     {
         return 0xEE;
@@ -282,12 +288,14 @@ uint8_t SparkFun_Bio_Sensor_Hub::configSensorBpm(uint8_t mode)
     _userSelectedMode = mode;
     _sampleRate = readAlgoSamples();
 
-    __delay_cycles(1000000); // 1 second delay @ 1MHz
+    delay_ms(1000);
+    if(DEBUG) uart_write_string("\tconfigSensorBPM end\n");
     return SFE_BIO_SUCCESS;
 }
 
 bioData SparkFun_Bio_Sensor_Hub::readBpm()
 {
+    if(DEBUG) uart_write_string("\treadBpm begin\n");
     bioData libBpm = {0};
     uint8_t status = readSensorHubStatus();
 
@@ -367,6 +375,7 @@ bioData SparkFun_Bio_Sensor_Hub::readBpm()
         return libBpm;
     }
 
+    if(DEBUG) uart_write_string("\treadBpm end\n");
     return libBpm;
 }
 
@@ -903,7 +912,7 @@ bool SparkFun_Bio_Sensor_Hub::eraseFlash()
     UCB0CTLW0 |= UCTXSTP;
     while (UCB0CTLW0 & UCTXSTP);
 
-    __delay_cycles(10000); // 10ms @ 1MHz
+    delay_ms(10);
 
     // read back the single status byte
     UCB0CTLW0 &= ~UCTR;
@@ -2541,7 +2550,7 @@ void b_low(uint8_t pin) {
     P1DIR |= pin;  // Set to output
 }
 
-void b_delay() { __delay_cycles(200); } // ~2.5kHz for maximum stability with weak pull-ups
+void b_delay() { delay_ms(1) } // ~2.5kHz for maximum stability with weak pull-ups
 
 void b_start() {
     b_high(SDA); b_high(SCL); b_delay();
@@ -2646,7 +2655,7 @@ void runI2CScannerBitBang()
             uart_write_string("\r\n");
         }
 
-        __delay_cycles(1000); // Small rest between pings
+        delay_ms(1);
     }
 
     P1OUT &= ~BIT0; // Turn off LED
@@ -2665,13 +2674,13 @@ int main(void)
     delay_ms(100);          // wait a little bit
     uart_write_string("\r\n--- SYSTEM STARTUP ---\n");
 
-    // // ensure i2c lines are high
+    // ensure i2c lines are high
     P1SEL0 &= ~(BIT2 | BIT3);
     P1SEL1 &= ~(BIT2 | BIT3);
     P1DIR &= ~(BIT2 | BIT3); // inputs
     P1REN &= ~(BIT2 | BIT3); // external resistors
 
-    // // toggle scl to clear
+    // toggle scl to clear
     P1DIR |= BIT3;
     for(int i = 0; i < 9; i++)
     {
@@ -2683,7 +2692,7 @@ int main(void)
 
     uart_write_string("I2C Bus Recovered (ideally).\n");
 
-    // // switch to hardware i2c mode
+    // switch to hardware i2c mode
     P1SEL0 |= (BIT2 | BIT3);
     P1SEL1 &= ~(BIT2 | BIT3);   // double-checking
     UCB0CTLW0 = UCSWRST; // enable reset
