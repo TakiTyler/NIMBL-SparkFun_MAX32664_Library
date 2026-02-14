@@ -452,7 +452,7 @@ class SparkFun_Bio_Sensor_Hub{
     // writes 3 bytes
     uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte);
     // writes 4 bytes (last one being uint8_t)
-    uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, uint8_t _writeByteTwo);
+    uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, uint8_t _writeVal);
     // writes 4 bytes (last one being uint16_t)
     uint8_t writeByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, uint16_t _val);
     // used for Sp02 coefficients
