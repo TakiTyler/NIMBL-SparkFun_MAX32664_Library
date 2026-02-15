@@ -1,7 +1,14 @@
 #include <stdint.h>
 #include <stddef.h>
 
-// the MAX32664 is what we talk to, the MAX30101 is doing the calcs for HR & Oxy
+///////////////////////////////////////////////////////////////////////////////
+//                                                                           //
+//         THESE VALUES COME FROM THE SPARKFUN MAX32664 USER GUIDE           //
+//                                                                           //
+//  ADDITIONALLY, THIS IS HEAVILY BASED ON:                                  //
+//  https://github.com/sparkfun/SparkFun_Bio_Sensor_Hub_Library/tree/master  //
+//                                                                           //
+///////////////////////////////////////////////////////////////////////////////
 
 #ifndef _SPARKFUN_BIO_SENSOR_HUB_LIBRARY_H_
 #define _SPARKFUN_BIO_SENSOR_HUB_LIBRARY_H_
@@ -24,23 +31,20 @@
 #define ADC_MASK 0x9F
 #define READ_ADC_MASK 0x60
 
-#define ENABLE_CMD_DELAY 45     // Milliseconds
-#define ALGO_CMD_DELAY_SHORT 45 // Milliseconds
-#define ALGO_CMD_DELAY_LONG 45  // Milliseconds
-#define CMD_DELAY 2             // Milliseconds
-#define MAXFAST_ARRAY_SIZE 6    // Number of bytes...
+#define MAXFAST_ARRAY_SIZE 6 // Number of bytes...
 #define MAXFAST_EXTENDED_DATA 5
-#define MAX30101_LED_ARRAY 12   // 4 values of 24 bit (3 byte) LED values
+#define MAX30101_LED_ARRAY 12 // 4 values of 24 bit (3 byte) LED values
 
 #define SET_FORMAT 0x00
-#define READ_FORMAT 0x01            // Index Byte under Family Byte: READ_OUTPUT_MODE (0x11)
-#define WRITE_SET_THRESHOLD 0x01    // Index Byte for WRITE_INPUT(0x14)
+#define READ_FORMAT 0x01         // Index Byte under Family Byte: READ_OUTPUT_MODE (0x11)
+#define WRITE_SET_THRESHOLD 0x01 // Index Byte for WRITE_INPUT(0x14)
 #define WRITE_EXTERNAL_TO_FIFO 0x00
 
-const uint8_t BIO_ADDRESS = 0x55;   // address for I2C
+const uint8_t BIO_ADDRESS = 0x55; // address for I2C
 
 // the struct that holds all the important data
-struct bioData{
+struct bioData
+{
     uint32_t irLed;
     uint32_t redLed;
     // uint32_t greenLed;
@@ -54,35 +58,38 @@ struct bioData{
     uint8_t reserveTwo; // -- Algorithm Mode 2 ^^
 };
 
-struct version{
-    // 3 bytes total
+struct version
+{
     uint8_t major;
     uint8_t minor;
     uint8_t revision;
 };
 
-struct sensorAttr{
+struct sensorAttr
+{
     uint8_t byteWord;
     uint8_t availRegisters;
 };
 
-// these error codes & names come from the MAX32664 user guide, 
-enum READ_STATUS_BYTE_VALUE{
-    SFE_BIO_SUCCESS = 0x00,     // success!
-    ERR_UNAVAIL_CMD,            // illegal Family Byte and/or Command Byte was used
-    ERR_UNAVAIL_FUNC,           // function is not implemented
-    ERR_DATA_FORMAT,            // incorrect number of bytes sent for the requested Family Byte
-    ERR_INPUT_VALUE,            // illegal configuration value was attempted to be set
-    ERR_TRY_AGAIN,              // device is busy, try again
-    ERR_BTLDR_GENERAL = 0x80,   // general error while receiving/flashing a page during the bootloader sequence
-    ERR_BTLDR_CHECKSUM,         // checksum error while decrypting/checking page data
-    ERR_BTLDR_AUTH,             // authorization error
-    ERR_BTLDR_INVALID_APP,      // application not valid
-    ERR_UNKNOWN = 0xFF          // unknown error
+// these error codes & names come from the MAX32664 user guide,
+enum READ_STATUS_BYTE_VALUE
+{
+    SFE_BIO_SUCCESS = 0x00,   // success!
+    ERR_UNAVAIL_CMD,          // illegal Family Byte and/or Command Byte was used
+    ERR_UNAVAIL_FUNC,         // function is not implemented
+    ERR_DATA_FORMAT,          // incorrect number of bytes sent for the requested Family Byte
+    ERR_INPUT_VALUE,          // illegal configuration value was attempted to be set
+    ERR_TRY_AGAIN,            // device is busy, try again
+    ERR_BTLDR_GENERAL = 0x80, // general error while receiving/flashing a page during the bootloader sequence
+    ERR_BTLDR_CHECKSUM,       // checksum error while decrypting/checking page data
+    ERR_BTLDR_AUTH,           // authorization error
+    ERR_BTLDR_INVALID_APP,    // application not valid
+    ERR_UNKNOWN = 0xFF        // unknown error
 };
 
 // common bytes used to tell the MAX32664 what operation we're performing
-enum FAMILY_REGISTER_BYTES{
+enum FAMILY_REGISTER_BYTES
+{
     HUB_STATUS = 0x00,              // read sensor hub status
     SET_DEVICE_MODE,                // select the device operating mode. (app must implement this) (see enum DEVICE_MODE_WRITE_BYTES below)
     READ_DEVICE_MODE,               // read the device operating mode
@@ -106,22 +113,24 @@ enum FAMILY_REGISTER_BYTES{
 };
 
 // index bytes for SET_DEVICE_MODE (0x01)
-enum DEVICE_MODE_WRITE_BYTES{
+enum DEVICE_MODE_WRITE_BYTES
+{
     EXIT_BOOTLOADER = 0x00,
     SFE_BIO_RESET = 0x02,
     ENTER_BOOTLOADER = 0x08
 };
 
 // index bytes for OUTPUT_MODE (0x10)
-enum OUTPUT_MODE_WRITE_BYTE{
-    PAUSE = 0x00,           // (no data)
-    SENSOR_DATA,            
+enum OUTPUT_MODE_WRITE_BYTE
+{
+    PAUSE = 0x00, // (no data)
+    SENSOR_DATA,
     ALGO_DATA,
-    SENSOR_AND_ALGORITHM,   // combine the above two
-    PAUSE_TWO,              // (no data two)
-    SENSOR_COUNTER_BYTE,    // sample counter byte
-    ALGO_COUNTER_BYTE,      // sample counter byte
-    SENSOR_ALGO_COUNTER     // combine the above two
+    SENSOR_AND_ALGORITHM, // combine the above two
+    PAUSE_TWO,            // (no data two)
+    SENSOR_COUNTER_BYTE,  // sample counter byte
+    ALGO_COUNTER_BYTE,    // sample counter byte
+    SENSOR_ALGO_COUNTER   // combine the above two
 };
 
 // index bytes for READ_DATA_OUTPUT (0x12)
@@ -132,7 +141,8 @@ enum FIFO_OUTPUT_INDEX_BYTE
 };
 
 // index bytes for READ_DATA_INPUT (0x13)
-enum FIFO_EXTERNAL_INDEX_BYTE{
+enum FIFO_EXTERNAL_INDEX_BYTE
+{
     SAMPLE_SIZE = 0x00,     // sensor sample size
     READ_INPUT_DATA,        // read input FIFO size for the maximum number of samples that the input can hold
     READ_SENSOR_DATA,       // read sensor FIFO size for the maximum number of samples that the sensor can hold (for external accelerometer)
@@ -217,21 +227,21 @@ enum ALGORITHM_CONFIG_INDEX_BYTE
 enum ALGO_AGC_WRITE_BYTE
 {
 
-    AGC_GAIN_ID = 0x00,             // 0 -> 100
-    AGC_STEP_SIZE_ID,               // 0 -> 100
-    AGC_SENSITIVITY_ID,             // 0 -> 100
-    AGC_NUM_SAMP_ID,                // 0 -> 255
-    MAXIMFAST_COEF_ID = 0x0B        // 3, signed, 32-bit integers
+    AGC_GAIN_ID = 0x00,      // 0 -> 100
+    AGC_STEP_SIZE_ID,        // 0 -> 100
+    AGC_SENSITIVITY_ID,      // 0 -> 100
+    AGC_NUM_SAMP_ID,         // 0 -> 255
+    MAXIMFAST_COEF_ID = 0x0B // 3, signed, 32-bit integers
 };
 
 // extension of CHANGE_ALGORITHM_CONFIG (0x50)
 enum ALGO_BPT_WRITE_BYTE
 {
-    BPT_MEDICATION = 0x00,      // 0x00, 0x00: not using blood pressure. 0x00, 0x01: using blood pressure
-    DIASTOLIC_VALUE,            // returns 3 values
-    SYSTOLIC_VALUE,             // returns 3 values
-    BPT_CALIB_DATA,             // Index + 824 bytes of calibration data
-    PATIENT_RESTING = 0x05,     // 0x05, 0x00: resting. 0x05, 0x01: not resting
+    BPT_MEDICATION = 0x00,  // 0x00, 0x00: not using blood pressure. 0x00, 0x01: using blood pressure
+    DIASTOLIC_VALUE,        // returns 3 values
+    SYSTOLIC_VALUE,         // returns 3 values
+    BPT_CALIB_DATA,         // Index + 824 bytes of calibration data
+    PATIENT_RESTING = 0x05, // 0x05, 0x00: resting. 0x05, 0x01: not resting
     AGC_SP02_COEFS = 0x0B
 };
 
@@ -265,9 +275,10 @@ enum ALGORITHM_MODE_ENABLE_INDEX_BYTE
 };
 
 // index byte for BOOTLOADER_FLASH (0x80)
-enum BOOTLOADER_FLASH_INDEX_BYTE{
-    SET_INIT_VECTOR_BYTES = 0x00,   // not required for a non-secure bootloader
-    SET_AUTH_BYTES,          // not required for a non-secure bootloader
+enum BOOTLOADER_FLASH_INDEX_BYTE
+{
+    SET_INIT_VECTOR_BYTES = 0x00, // not required for a non-secure bootloader
+    SET_AUTH_BYTES,               // not required for a non-secure bootloader
     SET_NUM_PAGES,
     ERASE_FLASH,
     SEND_PAGE_VALUE
@@ -288,23 +299,25 @@ enum IDENTITY_INDEX_BYTES
     READ_ALGO_VERS = 0x07
 };
 
-class SparkFun_Bio_Sensor_Hub{
-    
-    public:
+class SparkFun_Bio_Sensor_Hub
+{
 
-    // variables
+public:
+    //// public variables ////
+
     uint8_t bpmArr[MAXFAST_ARRAY_SIZE]{};
     uint8_t bpmArrTwo[MAXFAST_ARRAY_SIZE + MAXFAST_EXTENDED_DATA]{};
     uint8_t senArr[MAX30101_LED_ARRAY]{};
     uint8_t bpmSenArr[MAXFAST_ARRAY_SIZE + MAX30101_LED_ARRAY]{};
     uint8_t bpmSenArrTwo[MAXFAST_ARRAY_SIZE + MAXFAST_EXTENDED_DATA + MAX30101_LED_ARRAY]{};
 
-    // constructor
-    SparkFun_Bio_Sensor_Hub(volatile uint8_t* resetPort, volatile uint8_t* resetOut, uint16_t resetBit,
-                            volatile uint8_t* mfioPort, volatile uint8_t* mfioOut, volatile uint8_t* mfioRen, uint16_t mfioBit,
+    //// class constructor ////
+
+    SparkFun_Bio_Sensor_Hub(volatile uint8_t *resetPort, volatile uint8_t *resetOut, uint16_t resetBit,
+                            volatile uint8_t *mfioPort, volatile uint8_t *mfioOut, volatile uint8_t *mfioRen, uint16_t mfioBit,
                             uint8_t address);
 
-    //// functions ////
+    //// public functions ////
 
     // initializes the sensor, placing the max32664 into application mode
     uint8_t begin();
@@ -447,16 +460,12 @@ class SparkFun_Bio_Sensor_Hub{
     // tells the bootloader how many pages of memory to prepare for a flash write
     bool setNumPages(uint8_t totalPages);
 
-    // erases flash memory
     bool eraseFlash();
 
-    // does as says
     version readBootloaderVers();
 
-    // does as says
     version readSensorHubVersion();
 
-    // does as says
     version readAlgorithmVersion();
 
     // writes medication value
@@ -465,47 +474,36 @@ class SparkFun_Bio_Sensor_Hub{
     // checks for medication value
     uint8_t isPatientBPMedication();
 
-    // does as name implies
     uint8_t writeDiastolicVals(uint8_t diasVal1, uint8_t diasVal2, uint8_t diasVal3);
 
-    // does as name implies
     uint8_t readDiastolicVals(uint8_t userArray[]);
 
-    // does as name implies
     uint8_t writeSystolicVals(uint8_t sysVal1, uint8_t sysVal2, uint8_t sysVal3);
 
-    // does as name implies
     uint8_t readSystolicVals(uint8_t userArray[]);
 
-    // does as name implies
     uint8_t writeBPTAlgoData(uint8_t bptCalibData[]);
 
-    // does as name implies
     uint8_t readBPTAlgoData(uint8_t userArray[]);
 
-    // does as name implies
     uint8_t isPatientResting(uint8_t resting);
 
-    // does as name implies
     uint8_t isPatientResting();
 
-    // does as name implies
     uint8_t writeSP02AlgoCoef(int32_t intA, int32_t intB, int32_t intC);
 
-    // does as name implies
     uint8_t readSP02AlgoCoef(int32_t userArray[]);
 
-    private:
+private:
+    //// private variables ////
 
-    // variables
+    volatile uint8_t *_resetPort; // port direction register (ex: P1DIR)
+    volatile uint8_t *_resetOut;  // port output register (ex: P1OUT)
+    uint16_t _resetBit;           // the specific bit (ex: BIT4)
 
-    volatile uint8_t* _resetPort;     // port direction register (ex: P1DIR)
-    volatile uint8_t* _resetOut;      // port output register (ex: P1OUT)
-    uint16_t _resetBit;      // the specific bit (ex: BIT4)
-
-    volatile uint8_t* _mfioPort;
-    volatile uint8_t* _mfioOut;
-    volatile uint8_t* _mfioRen;
+    volatile uint8_t *_mfioPort;
+    volatile uint8_t *_mfioOut;
+    volatile uint8_t *_mfioRen;
     uint16_t _mfioBit;
 
     uint8_t _address;
@@ -514,7 +512,7 @@ class SparkFun_Bio_Sensor_Hub{
     uint8_t _userSelectedMode;
     uint8_t _sampleRate = 100;
 
-    // functions
+    //// private functions ////
 
     // enables write
     uint8_t enableWrite(uint8_t _familyByte, uint8_t _indexByte, uint8_t _enableByte);
@@ -554,7 +552,6 @@ class SparkFun_Bio_Sensor_Hub{
 
     // reads array & fills the array passed through
     uint8_t readFillArray(uint8_t _familyByte, uint8_t _indexByte, uint8_t arraySize, uint8_t array[]);
-
 };
 
 #endif // _SPARKFUN_BIO_SENSOR_HUB_LIBRARY_H_

@@ -1,7 +1,7 @@
 ******************************************************************************
                   MSP430 Linker PC v21.6.1                     
 ******************************************************************************
->> Linked Fri Feb 13 19:44:53 2026
+>> Linked Sun Feb 15 13:39:28 2026
 
 OUTPUT FILE NAME:   <nimbl_sparkfun_sensor_library.out>
 ENTRY POINT SYMBOL: "_c_int00_noargs_mpu"  address: 00008268
@@ -70,7 +70,7 @@ MEMORY CONFIGURATION
   INT44                 0000fffa   00000002  00000002  00000000  RWIX
   INT45                 0000fffc   00000002  00000002  00000000  RWIX
   RESET                 0000fffe   00000002  00000002  00000000  RWIX
-  FRAM2                 00010000   00008000  00000fda  00007026  RWIX
+  FRAM2                 00010000   00008000  00001014  00006fec  RWIX
   ROMLIB                000c0000   00004000  00000000  00004000  RWIX
   BSL1                  000ffc00   00000400  00000000  00000400  RWIX
 
@@ -233,63 +233,63 @@ SYSNMI     0    0000fffc    00000002
 .reset     0    0000fffe    00000002     
                   0000fffe    00000002     rts430x_lc_sd_eabi.lib : boot.c.obj (.reset)
 
-.text      0    00010000    00000fda     
+.text      0    00010000    00001014     
                   00010000    00000236     sensor-library.obj (.text:main)
                   00010236    00000164     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub7readBpmEv)
                   0001039a    000000ee     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_HubC1EPVhS1_jS1_S1_S1_jh)
-                  00010488    000000e2     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub11enableWriteEhhh)
-                  0001056a    000000e0     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub17readMultipleBytesEhhjPh)
-                  0001064a    000000ba     sensor-library.obj (.text:_Z13runI2CScannerv)
-                  00010704    000000b4     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub8readByteEhhh)
-                  000107b8    000000a8     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub8readByteEhh)
-                  00010860    000000a8     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub9writeByteEhhh)
-                  00010908    0000009e     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub13readFillArrayEhhhPh)
-                  000109a6    00000090     rts430x_lc_sd_eabi.lib : fs_div.asm.obj (.text)
-                  00010a36    0000007e     sensor-library.obj (.text:_Z20runI2CScannerBitBangv)
-                  00010ab4    00000074     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub20readSensorHubVersionEv)
-                  00010b28    0000006a     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub5beginEv)
-                  00010b92    0000006a     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub9configBpmEh)
-                  00010bfc    0000006a     rts430x_lc_sd_eabi.lib : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit_hold_wdt:__TI_auto_init_nobinit_nopinit_hold_wdt)
-                  00010c66    00000064     sensor-library.obj (.text:_Z14uart_write_inti)
-                  00010cca    00000064     sensor-library.obj (.text:_Z7b_writeh)
-                  00010d2e    0000003e     rts430x_lc_sd_eabi.lib : copy_zero_init.c.obj (.text:decompress:ZI:__TI_zero_init_nomemset:__TI_zero_init_nomemset)
-                  00010d6c    0000003c     FRWP_INIT_LIB_CCS_msp430_large_code_small_data.lib : frwp_init.obj (.text:__mpu_init)
-                  00010da8    0000002c     rts430x_lc_sd_eabi.lib : div16s.asm.obj (.text)
-                  00010dd4    0000002a     sensor-library.obj (.text:_Z8delay_msj)
-                  00010dfe    00000026     sensor-library.obj (.text:_Z7b_startv)
-                  00010e24    00000024     sensor-library.obj (.text:_Z8initUARTv)
-                  00010e48    00000024     rts430x_lc_sd_eabi.lib : fs_utof.asm.obj (.text)
-                  00010e6c    00000022     sensor-library.obj (.text:_Z17uart_write_stringPKc)
-                  00010e8e    00000020     sensor-library.obj (.text:_Z6b_stopv)
-                  00010eae    0000001c     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub15max30101ControlEh)
-                  00010eca    0000001c     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub20maximFastAlgoControlEh)
-                  00010ee6    0000001a     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub14agcAlgoControlEh)
-                  00010f00    00000018     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub13setOutputModeEh)
-                  00010f18    00000016     rts430x_lc_sd_eabi.lib : div16u.asm.obj (.text)
-                  00010f2e    00000014                            : memset.c.obj (.text:memset)
-                  00010f42    00000012                            : memcpy.c.obj (.text:memcpy)
-                  00010f54    00000010     sensor-library.obj (.text:_Z7b_delayv)
-                  00010f64    00000010     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub15readAlgoSamplesEv)
-                  00010f74    0000000e     sensor-library.obj (.text:_Z15uart_write_charc)
-                  00010f82    0000000e     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub16setFifoThresholdEh)
-                  00010f90    0000000c     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub17numSamplesOutFifoEv)
-                  00010f9c    0000000a     sensor-library.obj (.text:_Z17uart_clear_screenv)
-                  00010fa6    0000000a     sensor-library.obj (.text:_Z5b_lowh)
-                  00010fb0    0000000a     sensor-library.obj (.text:_Z6b_highh)
-                  00010fba    0000000a     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub10getMcuTypeEv)
-                  00010fc4    0000000a     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub19readSensorHubStatusEv)
-                  00010fce    00000006     rts430x_lc_sd_eabi.lib : exit.c.obj (.text:abort)
-                  00010fd4    00000004                            : pre_init.c.obj (.text:_system_pre_init)
-                  00010fd8    00000002                            : startup.c.obj (.text:_system_post_cinit)
+                  00010488    000000e8     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub13readFillArrayEhhhPh)
+                  00010570    000000e2     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub11enableWriteEhhh)
+                  00010652    000000e0     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub17readMultipleBytesEhhjPh)
+                  00010732    000000ba     sensor-library.obj (.text:_Z13runI2CScannerv)
+                  000107ec    000000b4     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub8readByteEhhh)
+                  000108a0    000000a8     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub8readByteEhh)
+                  00010948    000000a2     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub9writeByteEhhh)
+                  000109ea    00000090     rts430x_lc_sd_eabi.lib : fs_div.asm.obj (.text)
+                  00010a7a    00000078     sensor-library.obj (.text:_Z20runI2CScannerBitBangv)
+                  00010af2    00000074     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub20readSensorHubVersionEv)
+                  00010b66    0000006a     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub5beginEv)
+                  00010bd0    0000006a     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub9configBpmEh)
+                  00010c3a    0000006a     rts430x_lc_sd_eabi.lib : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit_hold_wdt:__TI_auto_init_nobinit_nopinit_hold_wdt)
+                  00010ca4    00000068     sensor-library.obj (.text:_Z7b_writeh)
+                  00010d0c    00000064     sensor-library.obj (.text:_Z14uart_write_inti)
+                  00010d70    0000003e     rts430x_lc_sd_eabi.lib : copy_zero_init.c.obj (.text:decompress:ZI:__TI_zero_init_nomemset:__TI_zero_init_nomemset)
+                  00010dae    0000003c     FRWP_INIT_LIB_CCS_msp430_large_code_small_data.lib : frwp_init.obj (.text:__mpu_init)
+                  00010dea    0000002c     rts430x_lc_sd_eabi.lib : div16s.asm.obj (.text)
+                  00010e16    0000002a     sensor-library.obj (.text:_Z8delay_msj)
+                  00010e40    00000026     sensor-library.obj (.text:_Z7b_startv)
+                  00010e66    00000024     sensor-library.obj (.text:_Z8initUARTv)
+                  00010e8a    00000024     rts430x_lc_sd_eabi.lib : fs_utof.asm.obj (.text)
+                  00010eae    00000022     sensor-library.obj (.text:_Z17uart_write_stringPKc)
+                  00010ed0    00000020     sensor-library.obj (.text:_Z6b_stopv)
+                  00010ef0    0000001c     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub15max30101ControlEh)
+                  00010f0c    0000001c     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub20maximFastAlgoControlEh)
+                  00010f28    0000001a     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub14agcAlgoControlEh)
+                  00010f42    00000018     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub13setOutputModeEh)
+                  00010f5a    00000016     rts430x_lc_sd_eabi.lib : div16u.asm.obj (.text)
+                  00010f70    00000014                            : memset.c.obj (.text:memset)
+                  00010f84    00000012                            : memcpy.c.obj (.text:memcpy)
+                  00010f96    00000010     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub15readAlgoSamplesEv)
+                  00010fa6    0000000e     sensor-library.obj (.text:_Z15uart_write_charc)
+                  00010fb4    0000000e     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub16setFifoThresholdEh)
+                  00010fc2    0000000c     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub17numSamplesOutFifoEv)
+                  00010fce    0000000a     sensor-library.obj (.text:_Z17uart_clear_screenv)
+                  00010fd8    0000000a     sensor-library.obj (.text:_Z5b_lowh)
+                  00010fe2    0000000a     sensor-library.obj (.text:_Z6b_highh)
+                  00010fec    0000000a     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub10getMcuTypeEv)
+                  00010ff6    0000000a     sensor-library.obj (.text:_ZN23SparkFun_Bio_Sensor_Hub19readSensorHubStatusEv)
+                  00011000    00000008     sensor-library.obj (.text:_Z7b_delayv)
+                  00011008    00000006     rts430x_lc_sd_eabi.lib : exit.c.obj (.text:abort)
+                  0001100e    00000004                            : pre_init.c.obj (.text:_system_pre_init)
+                  00011012    00000002                            : startup.c.obj (.text:_system_post_cinit)
 
 MODULE SUMMARY
 
        Module                 code   ro data   rw data
        ------                 ----   -------   -------
     .\
-       sensor-library.obj     3542   600       84     
+       sensor-library.obj     3600   600       84     
     +--+----------------------+------+---------+---------+
-       Total:                 3542   600       84     
+       Total:                 3600   600       84     
                                                       
     C:\ti\ccs1281\ccs\ccs_base\msp430\lib\FR2xx\FRWP_INIT_LIB_CCS_msp430_large_code_small_data.lib
        frwp_init.obj          60     0         0      
@@ -341,7 +341,7 @@ MODULE SUMMARY
        Stack:                 0      0         256    
        Linker Generated:      0      18        0      
     +--+----------------------+------+---------+---------+
-       Grand Total:           4106   670       340    
+       Grand Total:           4164   670       340    
 
 
 LINKER GENERATED COPY TABLES
@@ -438,7 +438,7 @@ address   name
 00000672  BAKMEM9                                              
 00000673  BAKMEM9_H                                            
 00000672  BAKMEM9_L                                            
-00010fce  C$$EXIT                                              
+00011008  C$$EXIT                                              
 000008e0  CP0CTL0                                              
 000008e1  CP0CTL0_H                                            
 000008e0  CP0CTL0_L                                            
@@ -1193,39 +1193,39 @@ address   name
 000001cd  WDTCTL_H                                             
 000001cc  WDTCTL_L                                             
 00008288  _Z12Timer_B0_ISRv                                    
-0001064a  _Z13runI2CScannerv                                   
-00010c66  _Z14uart_write_inti                                  
-00010f74  _Z15uart_write_charc                                 
-00010f9c  _Z17uart_clear_screenv                               
-00010e6c  _Z17uart_write_stringPKc                             
-00010a36  _Z20runI2CScannerBitBangv                            
-00010fa6  _Z5b_lowh                                            
-00010fb0  _Z6b_highh                                           
-00010e8e  _Z6b_stopv                                           
-00010f54  _Z7b_delayv                                          
-00010dfe  _Z7b_startv                                          
-00010cca  _Z7b_writeh                                          
-00010dd4  _Z8delay_msj                                         
-00010e24  _Z8initUARTv                                         
-00010fba  _ZN23SparkFun_Bio_Sensor_Hub10getMcuTypeEv           
-00010488  _ZN23SparkFun_Bio_Sensor_Hub11enableWriteEhhh        
-00010908  _ZN23SparkFun_Bio_Sensor_Hub13readFillArrayEhhhPh    
-00010f00  _ZN23SparkFun_Bio_Sensor_Hub13setOutputModeEh        
-00010ee6  _ZN23SparkFun_Bio_Sensor_Hub14agcAlgoControlEh       
-00010eae  _ZN23SparkFun_Bio_Sensor_Hub15max30101ControlEh      
-00010f64  _ZN23SparkFun_Bio_Sensor_Hub15readAlgoSamplesEv      
-00010f82  _ZN23SparkFun_Bio_Sensor_Hub16setFifoThresholdEh     
-00010f90  _ZN23SparkFun_Bio_Sensor_Hub17numSamplesOutFifoEv    
-0001056a  _ZN23SparkFun_Bio_Sensor_Hub17readMultipleBytesEhhjPh
-00010fc4  _ZN23SparkFun_Bio_Sensor_Hub19readSensorHubStatusEv  
-00010eca  _ZN23SparkFun_Bio_Sensor_Hub20maximFastAlgoControlEh 
-00010ab4  _ZN23SparkFun_Bio_Sensor_Hub20readSensorHubVersionEv 
-00010b28  _ZN23SparkFun_Bio_Sensor_Hub5beginEv                 
+00010732  _Z13runI2CScannerv                                   
+00010d0c  _Z14uart_write_inti                                  
+00010fa6  _Z15uart_write_charc                                 
+00010fce  _Z17uart_clear_screenv                               
+00010eae  _Z17uart_write_stringPKc                             
+00010a7a  _Z20runI2CScannerBitBangv                            
+00010fd8  _Z5b_lowh                                            
+00010fe2  _Z6b_highh                                           
+00010ed0  _Z6b_stopv                                           
+00011000  _Z7b_delayv                                          
+00010e40  _Z7b_startv                                          
+00010ca4  _Z7b_writeh                                          
+00010e16  _Z8delay_msj                                         
+00010e66  _Z8initUARTv                                         
+00010fec  _ZN23SparkFun_Bio_Sensor_Hub10getMcuTypeEv           
+00010570  _ZN23SparkFun_Bio_Sensor_Hub11enableWriteEhhh        
+00010488  _ZN23SparkFun_Bio_Sensor_Hub13readFillArrayEhhhPh    
+00010f42  _ZN23SparkFun_Bio_Sensor_Hub13setOutputModeEh        
+00010f28  _ZN23SparkFun_Bio_Sensor_Hub14agcAlgoControlEh       
+00010ef0  _ZN23SparkFun_Bio_Sensor_Hub15max30101ControlEh      
+00010f96  _ZN23SparkFun_Bio_Sensor_Hub15readAlgoSamplesEv      
+00010fb4  _ZN23SparkFun_Bio_Sensor_Hub16setFifoThresholdEh     
+00010fc2  _ZN23SparkFun_Bio_Sensor_Hub17numSamplesOutFifoEv    
+00010652  _ZN23SparkFun_Bio_Sensor_Hub17readMultipleBytesEhhjPh
+00010ff6  _ZN23SparkFun_Bio_Sensor_Hub19readSensorHubStatusEv  
+00010f0c  _ZN23SparkFun_Bio_Sensor_Hub20maximFastAlgoControlEh 
+00010af2  _ZN23SparkFun_Bio_Sensor_Hub20readSensorHubVersionEv 
+00010b66  _ZN23SparkFun_Bio_Sensor_Hub5beginEv                 
 00010236  _ZN23SparkFun_Bio_Sensor_Hub7readBpmEv               
-000107b8  _ZN23SparkFun_Bio_Sensor_Hub8readByteEhh             
-00010704  _ZN23SparkFun_Bio_Sensor_Hub8readByteEhhh            
-00010b92  _ZN23SparkFun_Bio_Sensor_Hub9configBpmEh             
-00010860  _ZN23SparkFun_Bio_Sensor_Hub9writeByteEhhh           
+000108a0  _ZN23SparkFun_Bio_Sensor_Hub8readByteEhh             
+000107ec  _ZN23SparkFun_Bio_Sensor_Hub8readByteEhhh            
+00010bd0  _ZN23SparkFun_Bio_Sensor_Hub9configBpmEh             
+00010948  _ZN23SparkFun_Bio_Sensor_Hub9writeByteEhhh           
 0001039a  _ZN23SparkFun_Bio_Sensor_HubC1EPVhS1_jS1_S1_S1_jh    
 0001039a  _ZN23SparkFun_Bio_Sensor_HubC2EPVhS1_jS1_S1_S1_jh    
 00004000  __STACK_END                                          
@@ -1236,7 +1236,7 @@ address   name
 00008006  __TI_Handler_Table_Base                              
 0000800a  __TI_Handler_Table_Limit                             
 00008290  __TI_ISR_TRAP                                        
-00010bfc  __TI_auto_init_nobinit_nopinit_hold_wdt              
+00010c3a  __TI_auto_init_nobinit_nopinit_hold_wdt              
 0000ffca  __TI_int20                                           
 0000ffcc  __TI_int21                                           
 0000ffce  __TI_int22                                           
@@ -1266,28 +1266,28 @@ address   name
 ffffffff  __TI_pprof_out_hndl                                  
 ffffffff  __TI_prof_data_size                                  
 ffffffff  __TI_prof_data_start                                 
-00010d2e  __TI_zero_init_nomemset                              
+00010d70  __TI_zero_init_nomemset                              
 ffffffff  __c_args__                                           
 00000001  __mpu_enable                                         
-00010d6c  __mpu_init                                           
-000109a6  __mspabi_divf                                        
-00010da8  __mspabi_divi                                        
-00010f18  __mspabi_divu                                        
-00010e48  __mspabi_fltuf                                       
-00010da8  __mspabi_remi                                        
-00010f18  __mspabi_remu                                        
+00010dae  __mpu_init                                           
+000109ea  __mspabi_divf                                        
+00010dea  __mspabi_divi                                        
+00010f5a  __mspabi_divu                                        
+00010e8a  __mspabi_fltuf                                       
+00010dea  __mspabi_remi                                        
+00010f5a  __mspabi_remu                                        
 00008268  _c_int00_noargs_mpu                                  
 0000fffe  _reset_vector                                        
 00003f00  _stack                                               
-00010fd8  _system_post_cinit                                   
-00010fd4  _system_pre_init                                     
-00010fce  abort                                                
+00011012  _system_post_cinit                                   
+0001100e  _system_pre_init                                     
+00011008  abort                                                
 00008000  fram_rw_start                                        
 00008000  fram_rx_start                                        
 00000001  info_fram_protection                                 
 00010000  main                                                 
-00010f42  memcpy                                               
-00010f2e  memset                                               
+00010f84  memcpy                                               
+00010f70  memset                                               
 00000001  program_fram_protection                              
 00000000  start_protection_offset_address                      
 
@@ -2175,53 +2175,53 @@ address   name
 00010236  _ZN23SparkFun_Bio_Sensor_Hub7readBpmEv               
 0001039a  _ZN23SparkFun_Bio_Sensor_HubC1EPVhS1_jS1_S1_S1_jh    
 0001039a  _ZN23SparkFun_Bio_Sensor_HubC2EPVhS1_jS1_S1_S1_jh    
-00010488  _ZN23SparkFun_Bio_Sensor_Hub11enableWriteEhhh        
-0001056a  _ZN23SparkFun_Bio_Sensor_Hub17readMultipleBytesEhhjPh
-0001064a  _Z13runI2CScannerv                                   
-00010704  _ZN23SparkFun_Bio_Sensor_Hub8readByteEhhh            
-000107b8  _ZN23SparkFun_Bio_Sensor_Hub8readByteEhh             
-00010860  _ZN23SparkFun_Bio_Sensor_Hub9writeByteEhhh           
-00010908  _ZN23SparkFun_Bio_Sensor_Hub13readFillArrayEhhhPh    
-000109a6  __mspabi_divf                                        
-00010a36  _Z20runI2CScannerBitBangv                            
-00010ab4  _ZN23SparkFun_Bio_Sensor_Hub20readSensorHubVersionEv 
-00010b28  _ZN23SparkFun_Bio_Sensor_Hub5beginEv                 
-00010b92  _ZN23SparkFun_Bio_Sensor_Hub9configBpmEh             
-00010bfc  __TI_auto_init_nobinit_nopinit_hold_wdt              
-00010c66  _Z14uart_write_inti                                  
-00010cca  _Z7b_writeh                                          
-00010d2e  __TI_zero_init_nomemset                              
-00010d6c  __mpu_init                                           
-00010da8  __mspabi_divi                                        
-00010da8  __mspabi_remi                                        
-00010dd4  _Z8delay_msj                                         
-00010dfe  _Z7b_startv                                          
-00010e24  _Z8initUARTv                                         
-00010e48  __mspabi_fltuf                                       
-00010e6c  _Z17uart_write_stringPKc                             
-00010e8e  _Z6b_stopv                                           
-00010eae  _ZN23SparkFun_Bio_Sensor_Hub15max30101ControlEh      
-00010eca  _ZN23SparkFun_Bio_Sensor_Hub20maximFastAlgoControlEh 
-00010ee6  _ZN23SparkFun_Bio_Sensor_Hub14agcAlgoControlEh       
-00010f00  _ZN23SparkFun_Bio_Sensor_Hub13setOutputModeEh        
-00010f18  __mspabi_divu                                        
-00010f18  __mspabi_remu                                        
-00010f2e  memset                                               
-00010f42  memcpy                                               
-00010f54  _Z7b_delayv                                          
-00010f64  _ZN23SparkFun_Bio_Sensor_Hub15readAlgoSamplesEv      
-00010f74  _Z15uart_write_charc                                 
-00010f82  _ZN23SparkFun_Bio_Sensor_Hub16setFifoThresholdEh     
-00010f90  _ZN23SparkFun_Bio_Sensor_Hub17numSamplesOutFifoEv    
-00010f9c  _Z17uart_clear_screenv                               
-00010fa6  _Z5b_lowh                                            
-00010fb0  _Z6b_highh                                           
-00010fba  _ZN23SparkFun_Bio_Sensor_Hub10getMcuTypeEv           
-00010fc4  _ZN23SparkFun_Bio_Sensor_Hub19readSensorHubStatusEv  
-00010fce  C$$EXIT                                              
-00010fce  abort                                                
-00010fd4  _system_pre_init                                     
-00010fd8  _system_post_cinit                                   
+00010488  _ZN23SparkFun_Bio_Sensor_Hub13readFillArrayEhhhPh    
+00010570  _ZN23SparkFun_Bio_Sensor_Hub11enableWriteEhhh        
+00010652  _ZN23SparkFun_Bio_Sensor_Hub17readMultipleBytesEhhjPh
+00010732  _Z13runI2CScannerv                                   
+000107ec  _ZN23SparkFun_Bio_Sensor_Hub8readByteEhhh            
+000108a0  _ZN23SparkFun_Bio_Sensor_Hub8readByteEhh             
+00010948  _ZN23SparkFun_Bio_Sensor_Hub9writeByteEhhh           
+000109ea  __mspabi_divf                                        
+00010a7a  _Z20runI2CScannerBitBangv                            
+00010af2  _ZN23SparkFun_Bio_Sensor_Hub20readSensorHubVersionEv 
+00010b66  _ZN23SparkFun_Bio_Sensor_Hub5beginEv                 
+00010bd0  _ZN23SparkFun_Bio_Sensor_Hub9configBpmEh             
+00010c3a  __TI_auto_init_nobinit_nopinit_hold_wdt              
+00010ca4  _Z7b_writeh                                          
+00010d0c  _Z14uart_write_inti                                  
+00010d70  __TI_zero_init_nomemset                              
+00010dae  __mpu_init                                           
+00010dea  __mspabi_divi                                        
+00010dea  __mspabi_remi                                        
+00010e16  _Z8delay_msj                                         
+00010e40  _Z7b_startv                                          
+00010e66  _Z8initUARTv                                         
+00010e8a  __mspabi_fltuf                                       
+00010eae  _Z17uart_write_stringPKc                             
+00010ed0  _Z6b_stopv                                           
+00010ef0  _ZN23SparkFun_Bio_Sensor_Hub15max30101ControlEh      
+00010f0c  _ZN23SparkFun_Bio_Sensor_Hub20maximFastAlgoControlEh 
+00010f28  _ZN23SparkFun_Bio_Sensor_Hub14agcAlgoControlEh       
+00010f42  _ZN23SparkFun_Bio_Sensor_Hub13setOutputModeEh        
+00010f5a  __mspabi_divu                                        
+00010f5a  __mspabi_remu                                        
+00010f70  memset                                               
+00010f84  memcpy                                               
+00010f96  _ZN23SparkFun_Bio_Sensor_Hub15readAlgoSamplesEv      
+00010fa6  _Z15uart_write_charc                                 
+00010fb4  _ZN23SparkFun_Bio_Sensor_Hub16setFifoThresholdEh     
+00010fc2  _ZN23SparkFun_Bio_Sensor_Hub17numSamplesOutFifoEv    
+00010fce  _Z17uart_clear_screenv                               
+00010fd8  _Z5b_lowh                                            
+00010fe2  _Z6b_highh                                           
+00010fec  _ZN23SparkFun_Bio_Sensor_Hub10getMcuTypeEv           
+00010ff6  _ZN23SparkFun_Bio_Sensor_Hub19readSensorHubStatusEv  
+00011000  _Z7b_delayv                                          
+00011008  C$$EXIT                                              
+00011008  abort                                                
+0001100e  _system_pre_init                                     
+00011012  _system_post_cinit                                   
 ffffffff  __TI_pprof_out_hndl                                  
 ffffffff  __TI_prof_data_size                                  
 ffffffff  __TI_prof_data_start                                 

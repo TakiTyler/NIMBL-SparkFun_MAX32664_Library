@@ -11,6 +11,7 @@
 #define DEBUG false
 
 extern void uart_write_string(const char *str);
+extern void uart_write_debug(const char *str);
 extern void uart_write_int(int num);
 extern void delay_ms(uint16_t ms);
 
@@ -50,20 +51,30 @@ SparkFun_Bio_Sensor_Hub::SparkFun_Bio_Sensor_Hub(volatile uint8_t* resetPort, vo
 // while board is in reset
 uint8_t SparkFun_Bio_Sensor_Hub::begin()
 {
+    if (DEBUG) uart_write_debug("begin() part 1 (check reset & mfio)");
+
     // validate that pins ARE assigned
     if (_resetPort == nullptr || _mfioPort == nullptr) return ERR_UNKNOWN;
+
+    if (DEBUG) uart_write_debug("begin() part 2 (set mfio high & reset low)");
 
     *_mfioOut |= _mfioBit;    // set mfio high
     *_resetOut &= ~_resetBit; // set reset low
     delay_ms(10);
 
+    if (DEBUG) uart_write_debug("begin() part 3 (set reset high)");
+
     *_resetOut |= _resetBit; // set reset high
     delay_ms(1000);
+
+    if (DEBUG) uart_write_debug("begin() part 4 (set mfio to input)");
 
     // set mfio to input
     *_mfioPort &= ~_mfioBit;
     *_mfioRen |= _mfioBit;
     *_mfioOut |= _mfioBit;
+
+    if (DEBUG) uart_write_debug("begin() part 5 (return)");
 
     return readByte(READ_DEVICE_MODE, 0x00); // verify sensor returns 0x00 (application)
 }
@@ -72,17 +83,27 @@ uint8_t SparkFun_Bio_Sensor_Hub::begin()
 // to do this, pull MFIO low while board is in reset
 uint8_t SparkFun_Bio_Sensor_Hub::beginBootloader()
 {
+    if (DEBUG) uart_write_debug("beginBootloader() part 1 (check reset & mfio)");
+
     // validate that pins ARE assigned
     if (_resetPort == nullptr || _mfioPort == nullptr) return ERR_UNKNOWN;
+
+    if (DEBUG) uart_write_debug("beginBootloader() part 2 (set mfio & reset low)");
 
     *_mfioOut &= ~_mfioBit;   // set mfio low
     *_resetOut &= ~_resetBit; // set reset low
     delay_ms(10);
 
+    if (DEBUG) uart_write_debug("beginBootloader() part 3 (set reset high)");
+
     *_resetOut |= _resetBit; // set reset high
     delay_ms(50);
 
+    if (DEBUG) uart_write_debug("beginBootloader() part 4 (set mfio high)");
+
     *_mfioOut |= _mfioBit; // set mfio high
+
+    if (DEBUG) uart_write_debug("beginBootloader() part 5 (return)");
 
     return readByte(READ_DEVICE_MODE, 0x00); // verify sensor returned 0x08 (bootloader)
 }
@@ -90,18 +111,25 @@ uint8_t SparkFun_Bio_Sensor_Hub::beginBootloader()
 // checks the status of the FIFO
 uint8_t SparkFun_Bio_Sensor_Hub::readSensorHubStatus()
 {
+    if (DEBUG) uart_write_debug("readSensorHubStatus() readByte(family: 0x00, index: 0x00)");
     return readByte(HUB_STATUS, 0x00);
 }
 
 // alternate way to set mode of sensor (implemented as the github has)
 uint8_t SparkFun_Bio_Sensor_Hub::setOperatingMode(uint8_t selection)
 {
+    if (DEBUG) uart_write_debug("setOperatingMode() part 1 (verify selection)");
+
     // parameter validation (must be 0x00, 0x02, or 0x08)
     if (selection != EXIT_BOOTLOADER && selection != SFE_BIO_RESET && selection != ENTER_BOOTLOADER) return INCORR_PARAM;
+
+    if (DEBUG) uart_write_debug("setOperatingMode() part 2 (write the device mode)");
 
     // send mode change
     uint8_t statusByte = writeByte(SET_DEVICE_MODE, 0x00, selection);
     if (statusByte != SFE_BIO_SUCCESS) return statusByte;
+    
+    if (DEBUG) uart_write_debug("setOperatingMode() part 3 (return & check device mode)");
 
     return readByte(READ_DEVICE_MODE, 0x00); // read device mode (either 0x00 or 0x08 should be returned)
 }
@@ -2470,6 +2498,14 @@ void uart_write_string(const char *str)
         if (*str == '\n') uart_write_char('\r');
         uart_write_char(*str++);
     }
+}
+
+void uart_write_debug(const char *str)
+{
+    uart_write_char('\t');
+    while (*str) uart_write_char(*str++);
+    uart_write_char('\r');
+    uart_write_char('\n');
 }
 
 void uart_write_int(int num)
