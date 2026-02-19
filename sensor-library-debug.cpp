@@ -134,152 +134,122 @@ uint8_t SparkFun_Bio_Sensor_Hub::setOperatingMode(uint8_t selection)
     return readByte(READ_DEVICE_MODE, 0x00); // read device mode (either 0x00 or 0x08 should be returned)
 }
 
+// sets basic settings to get sensor & biometric data
+// those being: heartrate, confidence, Sp02, and if a finger is detected
 uint8_t SparkFun_Bio_Sensor_Hub::configBpm(uint8_t mode)
 {
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 1\n");
+    if (DEBUG) uart_write_debug("configBpm() part 1 (verify mode)");
 
-    if (mode != MODE_ONE && mode != MODE_TWO)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (INPUT CORRECT MODE)\n");
-        return 0xEE;
-    }
-
-    if(DEBUG) uart_write_string("\tconfigBpm part 2\n");
+    if (mode != MODE_ONE && mode != MODE_TWO) return ERR_TRY_AGAIN; // make sure we selected a valid mode
 
     uint8_t status;
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 3\n");
+    if (DEBUG) uart_write_debug("configBpm() part 2 (setOutputMode to only data)");
 
-    status = setOutputMode(0x02);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ setOutputMode)\n");
-        if(DEBUG) uart_write_int(status);
-        return status;
-    }
+    status = setOutputMode(ALGO_DATA); // set the output mode to only data
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 4\n");
+    if (DEBUG) uart_write_debug("configBpm() part 3 (setFifoThreshold to one sample)");
 
     status = setFifoThreshold(0x01); // one sample before interrupt is fired
-    if (status != SFE_BIO_SUCCESS)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ setFifoThreshold)\n");
-        return status;
-    }
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 5\n");
+    if (DEBUG) uart_write_debug("configBpm() part 4 (enable agcAlgoControl)");
 
     status = agcAlgoControl(ENABLE); // one sample before interrupt is fired
-    if (status != SFE_BIO_SUCCESS)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ acgAlgoControl)\n");
-        return status;
-    }
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 6\n");
+    if (DEBUG) uart_write_debug("configBpm() part 5 (enable max30101Control)");
 
-    status = max30101Control(ENABLE);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ max30101Control)\n");
-        return status;
-    }
+    status = max30101Control(ENABLE); // enable control
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 7\n");
+    if (DEBUG) uart_write_debug("configBpm() part 6 (set maximFastAlgoControl)");
 
-    status = maximFastAlgoControl(mode);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ maximFastAlgoControl)\n");
-        return status;
-    }
+    status = maximFastAlgoControl(mode); // set the algo mode to our choice
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 8\n");
+    if (DEBUG) uart_write_debug("configBpm() part 7 (store user mode & sample rate)");
 
     _userSelectedMode = mode;
     _sampleRate = readAlgoSamples();
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 9\n");
+    if (DEBUG) uart_write_debug("configBpm() part 8 (wait & return)");
 
     delay_ms(1000); // 1 second delay
     return SFE_BIO_SUCCESS;
 }
 
+// sets basic settings to get LED counts from MAX30101
 uint8_t SparkFun_Bio_Sensor_Hub::configSensor()
 {
-    if(DEBUG) uart_write_string("\tconfigSensor begin\n");
     uint8_t status;
 
-    status = setOutputMode(SENSOR_DATA);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    if (DEBUG) uart_write_debug("configSensor() part 1 (setOutputMode to sensor data)");
 
-    status = setFifoThreshold(0x01);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    status = setOutputMode(SENSOR_DATA); // set to sensor data
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    status = max30101Control(ENABLE);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    if (DEBUG) uart_write_debug("configSensor() part 2 (setFifoThreshold to one sample)");
 
-    status = maximFastAlgoControl(MODE_ONE);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    status = setFifoThreshold(0x01); // one sample before interrupt is fired to MAX32664
+    if (status != SFE_BIO_SUCCESS) return status;
+
+    if (DEBUG) uart_write_debug("configSensor() part 3 (enable max30101Control)");
+
+    status = max30101Control(ENABLE); // enable sensor
+    if (status != SFE_BIO_SUCCESS) return status;
+
+    if (DEBUG) uart_write_debug("configSensor() part 4 (set maximFastAlgoControl to MODE_ONE)");
+
+    status = maximFastAlgoControl(MODE_ONE); // enable algorithm
+    if (status != SFE_BIO_SUCCESS) return status;
+
+    if (DEBUG) uart_write_debug("configSensor() part 5 (wait & return)");
 
     delay_ms(1000);
-    if(DEBUG) uart_write_string("\tconfigSensor end\n");
     return SFE_BIO_SUCCESS;
 }
 
+// configure both sensor & biometric data
 uint8_t SparkFun_Bio_Sensor_Hub::configSensorBpm(uint8_t mode)
 {
 
-    if(DEBUG) uart_write_string("\tconfigSensorBPM begin\n");
-    if (mode != MODE_ONE && mode != MODE_TWO)
-    {
-        return 0xEE;
-    }
+    if (DEBUG) uart_write_debug("configSensorBpm() part 1 (check mode)");
+
+    if (mode != MODE_ONE && mode != MODE_TWO) return ERR_TRY_AGAIN; // ensure a correct mode was selected
 
     uint8_t status;
 
-    status = setOutputMode(SENSOR_AND_ALGORITHM);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    if (DEBUG) uart_write_debug("configSensorBpm() part 2 (setOutputMode to bio & sensor data)");
+
+    status = setOutputMode(SENSOR_AND_ALGORITHM); // set data & sensor data
+    if (status != SFE_BIO_SUCCESS) return status;
+
+    if (DEBUG) uart_write_debug("configSensorBpm() part 3 (setFifoThreshold to one sample)");
 
     status = setFifoThreshold(0x01); // one sample before interrupt is fired
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    status = max30101Control(ENABLE);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    if (DEBUG) uart_write_debug("configSensorBpm() part 4 (enable max30101Control)");
 
-    status = maximFastAlgoControl(mode);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    status = max30101Control(ENABLE); // enable sensor
+    if (status != SFE_BIO_SUCCESS) return status;
+
+    if (DEBUG) uart_write_debug("configSensorBpm() part 5 (set maximFastAlgoControl mode)");
+
+    status = maximFastAlgoControl(mode); // enable algorithm
+    if (status != SFE_BIO_SUCCESS) return status;
+
+    if (DEBUG) uart_write_debug("configSensorBpm() part 6 (store user mode & sample rate)");
 
     _userSelectedMode = mode;
     _sampleRate = readAlgoSamples();
 
+    if (DEBUG) uart_write_debug("configSensorBpm() part 7 (wait & return)");
+
     delay_ms(1000);
-    if(DEBUG) uart_write_string("\tconfigSensorBPM end\n");
     return SFE_BIO_SUCCESS;
 }
 

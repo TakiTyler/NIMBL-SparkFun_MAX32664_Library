@@ -42,6 +42,10 @@
 
 const uint8_t BIO_ADDRESS = 0x55; // address for I2C
 
+extern void uart_write_string(const char *str);
+extern void uart_write_int(int num);
+extern void delay_ms(uint16_t ms);
+
 // the struct that holds all the important data
 struct bioData
 {

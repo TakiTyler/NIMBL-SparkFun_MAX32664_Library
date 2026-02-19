@@ -1,4 +1,5 @@
 #include <msp430.h>
+#include <msp430fr2476.h>
 #include <stdio.h>
 #include <string.h>
 #include "sensor-library.h"
@@ -106,160 +107,91 @@ uint8_t SparkFun_Bio_Sensor_Hub::setOperatingMode(uint8_t selection)
     return readByte(READ_DEVICE_MODE, 0x00); // read device mode (either 0x00 or 0x08 should be returned)
 }
 
+// sets basic settings to get sensor & biometric data
+// those being: heartrate, confidence, Sp02, and if a finger is detected
 uint8_t SparkFun_Bio_Sensor_Hub::configBpm(uint8_t mode)
 {
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 1\n");
-
-    if (mode != MODE_ONE && mode != MODE_TWO)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (INPUT CORRECT MODE)\n");
-        return 0xEE;
-    }
-
-    if(DEBUG) uart_write_string("\tconfigBpm part 2\n");
+    if (mode != MODE_ONE && mode != MODE_TWO) return ERR_TRY_AGAIN; // make sure we selected a valid mode
 
     uint8_t status;
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 3\n");
-
-    status = setOutputMode(0x02);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ setOutputMode)\n");
-        if(DEBUG) uart_write_int(status);
-        return status;
-    }
-
-    if(DEBUG) uart_write_string("\tconfigBpm part 4\n");
+    status = setOutputMode(ALGO_DATA); // set the output mode to only data
+    if (status != SFE_BIO_SUCCESS) return status;
 
     status = setFifoThreshold(0x01); // one sample before interrupt is fired
-    if (status != SFE_BIO_SUCCESS)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ setFifoThreshold)\n");
-        return status;
-    }
-
-    if(DEBUG) uart_write_string("\tconfigBpm part 5\n");
+    if (status != SFE_BIO_SUCCESS) return status;
 
     status = agcAlgoControl(ENABLE); // one sample before interrupt is fired
-    if (status != SFE_BIO_SUCCESS)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ acgAlgoControl)\n");
-        return status;
-    }
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    if(DEBUG) uart_write_string("\tconfigBpm part 6\n");
+    status = max30101Control(ENABLE); // enable control
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    status = max30101Control(ENABLE);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ max30101Control)\n");
-        return status;
-    }
-
-    if(DEBUG) uart_write_string("\tconfigBpm part 7\n");
-
-    status = maximFastAlgoControl(mode);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        if(DEBUG) uart_write_string("\tconfigBpm (FAILED @ maximFastAlgoControl)\n");
-        return status;
-    }
-
-    if(DEBUG) uart_write_string("\tconfigBpm part 8\n");
+    status = maximFastAlgoControl(mode); // set the algo mode to our choice
+    if (status != SFE_BIO_SUCCESS) return status;
 
     _userSelectedMode = mode;
     _sampleRate = readAlgoSamples();
-
-    if(DEBUG) uart_write_string("\tconfigBpm part 9\n");
 
     delay_ms(1000); // 1 second delay
     return SFE_BIO_SUCCESS;
 }
 
+// sets basic settings to get LED counts from MAX30101
 uint8_t SparkFun_Bio_Sensor_Hub::configSensor()
 {
-    if(DEBUG) uart_write_string("\tconfigSensor begin\n");
     uint8_t status;
 
-    status = setOutputMode(SENSOR_DATA);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    status = setOutputMode(SENSOR_DATA); // set to sensor data
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    status = setFifoThreshold(0x01);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    status = setFifoThreshold(0x01); // one sample before interrupt is fired to MAX32664
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    status = max30101Control(ENABLE);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    status = max30101Control(ENABLE); // enable sensor
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    status = maximFastAlgoControl(MODE_ONE);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    status = maximFastAlgoControl(MODE_ONE); // enable algorithm
+    if (status != SFE_BIO_SUCCESS) return status;
 
     delay_ms(1000);
-    if(DEBUG) uart_write_string("\tconfigSensor end\n");
     return SFE_BIO_SUCCESS;
 }
 
+// configure both sensor & biometric data
 uint8_t SparkFun_Bio_Sensor_Hub::configSensorBpm(uint8_t mode)
 {
 
-    if(DEBUG) uart_write_string("\tconfigSensorBPM begin\n");
-    if (mode != MODE_ONE && mode != MODE_TWO)
-    {
-        return 0xEE;
-    }
+    if (mode != MODE_ONE && mode != MODE_TWO) return ERR_TRY_AGAIN; // ensure a correct mode was selected
 
     uint8_t status;
 
-    status = setOutputMode(SENSOR_AND_ALGORITHM);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    status = setOutputMode(SENSOR_AND_ALGORITHM); // set data & sensor data
+    if (status != SFE_BIO_SUCCESS) return status;
 
     status = setFifoThreshold(0x01); // one sample before interrupt is fired
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    status = max30101Control(ENABLE);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    status = max30101Control(ENABLE); // enable sensor
+    if (status != SFE_BIO_SUCCESS) return status;
 
-    status = maximFastAlgoControl(mode);
-    if (status != SFE_BIO_SUCCESS)
-    {
-        return status;
-    }
+    status = maximFastAlgoControl(mode); // enable algorithm
+    if (status != SFE_BIO_SUCCESS) return status;
 
     _userSelectedMode = mode;
     _sampleRate = readAlgoSamples();
 
     delay_ms(1000);
-    if(DEBUG) uart_write_string("\tconfigSensorBPM end\n");
     return SFE_BIO_SUCCESS;
 }
 
+// takes 8 bytes from FIFO buffer: 
+// heart rate (uint16_t), confidence (uint8_t), Sp02 (uint16_t), status (uint8_t)
 bioData SparkFun_Bio_Sensor_Hub::readBpm()
 {
-    if(DEBUG) uart_write_string("\treadBpm begin\n");
-    bioData libBpm = {0};
-    uint8_t status = readSensorHubStatus();
+    bioData libBpm;
+    uint8_t status = readSensorHubStatus(); // returns 0 if no error
 
     // if we get a communication error
     if (status == 1)
@@ -277,21 +209,22 @@ bioData SparkFun_Bio_Sensor_Hub::readBpm()
         status = readFillArray(READ_DATA_OUTPUT, READ_DATA, MAXFAST_ARRAY_SIZE, bpmArr);
         if (status != SFE_BIO_SUCCESS)
         {
+            libBpm.heartRate = 0;
+            libBpm.confidence = 0;
+            libBpm.oxygen = 0;
             return libBpm;
         }
 
         // heart rate formatting
-        libBpm.heartRate = (uint16_t(bpmArr[0]) << 8) | bpmArr[1];
-        libBpm.heartRate /= 10;
+        libBpm.heartRate = ((uint16_t(bpmArr[0]) << 8) | bpmArr[1]) / 10;
 
         // confidence formatting
         libBpm.confidence = bpmArr[2];
 
         // blood oxygen level formatting
-        libBpm.oxygen = (uint16_t(bpmArr[3]) << 8) | bpmArr[4];
-        libBpm.oxygen /= 10;
+        libBpm.oxygen = ((uint16_t(bpmArr[3]) << 8) | bpmArr[4]) / 10;
 
-        // "machine state" - has a finger been detected?
+        // has a finger been detected?
         libBpm.status = bpmArr[5];
 
         return libBpm;
@@ -301,32 +234,35 @@ bioData SparkFun_Bio_Sensor_Hub::readBpm()
         status = readFillArray(READ_DATA_OUTPUT, READ_DATA, MAXFAST_ARRAY_SIZE + MAXFAST_EXTENDED_DATA, bpmArrTwo);
         if (status != SFE_BIO_SUCCESS)
         {
+            libBpm.heartRate = 0;
+            libBpm.confidence = 0;
+            libBpm.oxygen = 0;
             return libBpm;
         }
 
         // heart rate formatting
-        libBpm.heartRate = (uint16_t(bpmArrTwo[0]) << 8) | bpmArrTwo[1];
-        libBpm.heartRate /= 10;
+        libBpm.heartRate = ((uint16_t(bpmArrTwo[0]) << 8) | bpmArrTwo[1]) / 10;
 
         // confidence formatting
         libBpm.confidence = bpmArrTwo[2];
 
         // blood oxygen level formatting
-        libBpm.oxygen = (uint16_t(bpmArrTwo[3]) << 8) | bpmArrTwo[4];
-        libBpm.oxygen /= 10;
+        libBpm.oxygen = ((uint16_t(bpmArrTwo[3]) << 8) | bpmArrTwo[4]) / 10;
 
-        // "machine state" - has a finger been detected?
+        // has a finger been detected?
         libBpm.status = bpmArrTwo[5];
 
         // Sp02 r value formatting
-        uint16_t tempVal = (uint16_t(bpmArrTwo[6]) << 8) | bpmArrTwo[7];
-        libBpm.rValue = tempVal;
-        libBpm.rValue /= 10.0;
+        // uint16_t tempVal = (uint16_t(bpmArrTwo[6]) << 8) | bpmArrTwo[7];
+        // libBpm.rValue = tempVal;
+        // libBpm.rValue /= 10.0;
+        libBpm.rValue = ((uint16_t(bpmArrTwo[6]) << 8) | bpmArrTwo[7]) / 10;
 
         // extended machine state formatting
         libBpm.extStatus = bpmArrTwo[8];
 
         // two additional bytes of data were requested, but not implemented
+        // with the sensor version we have
         return libBpm;
     }
     else
@@ -337,7 +273,6 @@ bioData SparkFun_Bio_Sensor_Hub::readBpm()
         return libBpm;
     }
 
-    if(DEBUG) uart_write_string("\treadBpm end\n");
     return libBpm;
 }
 
