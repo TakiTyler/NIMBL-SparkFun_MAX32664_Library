@@ -51,7 +51,7 @@ struct bioData
 {
     uint32_t irLed;
     uint32_t redLed;
-    // uint32_t greenLed;
+    uint32_t greenLed;
     uint16_t heartRate; // Least Significant Bit = 0.1bpm
     uint8_t confidence; // 0 -> 100% LSB = 1%
     uint16_t oxygen;    // 0 -> 100% LSB = 1%
