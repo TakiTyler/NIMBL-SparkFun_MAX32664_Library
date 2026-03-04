@@ -15,6 +15,66 @@ extern void uart_write_string(const char *str);
 extern void uart_write_int(int num);
 extern void delay_ms(uint16_t ms);
 
+// wait for transmitter buffer (ready for new data)
+inline void waitForTx()
+{
+    while(!(UCB0IFG & UCTXIFG));
+}
+
+// wait for receive buffer (ready to read data)
+inline void waitForRx()
+{
+    while(!(UCB0IFG & UCRXIFG));
+}
+
+// wait for stop condition to fully complete
+inline void waitForStop()
+{
+    while(UCB0CTLW0 & UCTXSTT); // wait for start
+    while(UCB0CTLW0 & UCTXSTP); // wait for stop
+}
+
+// used to stop transmission early
+inline void transmitDummyByte()
+{
+    UCB0CTLW0 |= UCTXSTP;       // send the stop signal
+    waitForRx();
+    uint8_t dummy = UCB0RXBUF;  // read the rest of buffer
+    waitForStop();
+}
+
+uint8_t checkResponse()
+{
+    while(UCB0CTLW0 & UCTXSTT);     // wait for response
+
+    if(UCB0IFG & UCNACKIFG)         // check NACK
+    {
+        UCB0CTLW0 |= UCTXSTP;       // send stop
+        UCB0IFG &= ~UCNACKIFG;      // clear flag
+        return ERR_TRY_AGAIN;
+    }
+    return SFE_BIO_SUCCESS;
+}
+
+// consolidates start + address + NACK check
+uint8_t startWriteSequence(uint8_t addr)
+{
+    UCB0I2CSA = addr;
+    UCB0CTLW0 |= UCTR | UCTXSTT;    // transmitter mode & start
+
+    return checkResponse();
+}
+
+// wait for start & enable read
+uint8_t startReadSequence()
+{
+    UCB0CTLW0 &= ~UCTR;
+    UCB0CTLW0 |= UCTXSTT;
+
+    return checkResponse();
+}
+
+
 // setting the reset & mfio pins
 SparkFun_Bio_Sensor_Hub::SparkFun_Bio_Sensor_Hub(volatile uint8_t* resetPort, volatile uint8_t* resetOut, uint16_t resetBit,
                                                  volatile uint8_t* mfioPort, volatile uint8_t* mfioOut, volatile uint8_t* mfioRen, uint16_t mfioBit,
@@ -324,6 +384,11 @@ bioData SparkFun_Bio_Sensor_Hub::readSensorBpm()
         libLedBpm.redLed |= (uint32_t)bpmSenArr[4] << 8;
         libLedBpm.redLed |= (uint32_t)bpmSenArr[5];
 
+        // format green LED values
+        libLedBpm.redLed = (uint32_t)bpmSenArr[6] << 16;
+        libLedBpm.redLed |= (uint32_t)bpmSenArr[7] << 8;
+        libLedBpm.redLed |= (uint32_t)bpmSenArr[8];
+
         // heart rate formatting
         libLedBpm.heartRate = ((uint16_t(bpmSenArr[12]) << 8) | bpmSenArr[13]) / 10;
 
@@ -352,6 +417,11 @@ bioData SparkFun_Bio_Sensor_Hub::readSensorBpm()
         libLedBpm.redLed = (uint32_t)bpmSenArrTwo[3] << 16;
         libLedBpm.redLed |= (uint32_t)bpmSenArrTwo[4] << 8;
         libLedBpm.redLed |= (uint32_t)bpmSenArrTwo[5];
+
+        // format green LED values
+        libLedBpm.redLed = (uint32_t)bpmSenArr[6] << 16;
+        libLedBpm.redLed |= (uint32_t)bpmSenArr[7] << 8;
+        libLedBpm.redLed |= (uint32_t)bpmSenArr[8];
 
         // heart rate formatting
         libLedBpm.heartRate = ((uint16_t(bpmSenArrTwo[12]) << 8) | bpmSenArrTwo[13]) / 10;
@@ -802,30 +872,27 @@ bool SparkFun_Bio_Sensor_Hub::setNumPages(uint8_t totalPages)
 
 bool SparkFun_Bio_Sensor_Hub::eraseFlash()
 {
-    UCB0I2CSA = this->_address;
-    UCB0CTLW0 |= UCTR | UCTXSTT;
+    uint8_t statusByte;
 
-    while(!(UCB0IFG & UCTXIFG));
+    //// START A WRITE ////
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
+
     UCB0TXBUF = BOOTLOADER_FLASH;
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
     UCB0TXBUF = ERASE_FLASH;
+    waitForTx();
 
-    while (UCB0CTLW0 & UCTXSTT);
-    UCB0CTLW0 |= UCTXSTP;
-    while (UCB0CTLW0 & UCTXSTP);
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();          // wait until stop condition
+    delay_ms(10);           // processing delay
 
-    delay_ms(10);
-
-    // read back the single status byte
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
-    UCB0CTLW0 |= UCTXSTP; // set stop
-
-    while (!(UCB0IFG & UCRXIFG));
-    uint8_t statusByte = UCB0RXBUF;
-
-    while (UCB0CTLW0 & UCTXSTP);
-
+    //// READ STATUS BYTE ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
+    
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForRx();
+    statusByte = UCB0RXBUF;
+    waitForStop();
     return (statusByte == SFE_BIO_SUCCESS);
 }
 
@@ -977,65 +1044,33 @@ uint8_t SparkFun_Bio_Sensor_Hub::readSP02AlgoCoef(int32_t userArray[])
 }
 
 //// DRIVER FUNCTIONS ////
-
 uint8_t SparkFun_Bio_Sensor_Hub::enableWrite(uint8_t _familyByte, uint8_t _indexByte, uint8_t _enableByte)
 {
     uint8_t statusByte;
 
     //// START A WRITE ////
-    UCB0I2CSA = this->_address;
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0CTLW0 & UCTXSTT)
-    {
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
     UCB0TXBUF = _familyByte;
-
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
     
     UCB0TXBUF = _indexByte;
-
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     UCB0TXBUF = _enableByte;
+    waitForTx();
 
-    while(!(UCB0IFG & UCTXIFG));
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();          // wait until stop condition
+    delay_ms(51);            // processing delay (extra for enable)
 
-    UCB0CTLW0 |= UCTXSTP;
-
-    while(UCB0CTLW0 & UCTXSTP);
-
-    delay_ms(6);
-
-    // delay based on config of familyByte & indexByte
-    if(_familyByte == ENABLE_SENSOR && _indexByte == ENABLE_MAX30101) delay_ms(45);
-    else if(_familyByte == ENABLE_ALGORITHM && _indexByte == ENABLE_AGC_ALGO) delay_ms(45);
-    else if(_familyByte == ENABLE_ALGORITHM && _indexByte == ENABLE_WHRM_ALGO) delay_ms(45);
-
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
-
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    while(!(UCB0IFG & UCRXIFG));
-
+    //// READ STATUS BYTE ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
+    
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForRx();
     statusByte = UCB0RXBUF;
-
-    while(UCB0CTLW0 & UCTXSTP);
-
+    waitForStop();
     return statusByte;
 }
 
@@ -1045,76 +1080,28 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
     uint8_t statusByte;
 
     //// START A WRITE ////
-    UCB0I2CSA = this->_address;
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set to transmitter mode & start condition
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    // make sure we get a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    // set the buffer to family byte
     UCB0TXBUF = _familyByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to index byte
     UCB0TXBUF = _indexByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to write byte
     UCB0TXBUF = _writeByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // send the stop signal
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait until stop condition
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // wait for 6 ms
-    delay_ms(6);
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();          // wait until stop condition
+    delay_ms(6);            // processing delay
 
     //// READ STATUS BYTE ////
-
-    // set uctr to 0 & start condition
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
-
-    // wait for a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait for transmit to complete and for stop to be true
-    while(!(UCB0IFG & UCRXIFG));
-
-    // read the buffer
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
+    
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForRx();
     statusByte = UCB0RXBUF;
-
-    // wait for stop
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // return the status
+    waitForStop();
     return statusByte;
 }
 
@@ -1124,82 +1111,31 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
     uint8_t statusByte;
 
     //// START A WRITE ////
-    UCB0I2CSA = this->_address;
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set to transmitter mode & start condition
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    // make sure we get a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    // set the buffer to family byte
     UCB0TXBUF = _familyByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to index byte
     UCB0TXBUF = _indexByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to write byte
     UCB0TXBUF = _writeByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to val write byte
     UCB0TXBUF = _writeVal;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // send the stop signal
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait until stop condition
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // wait for 6 ms
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
     //// READ STATUS BYTE ////
-
-    // set uctr to 0 & start condition
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
-
-    // wait for a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait for transmit to complete and for stop to be true
-    while(!(UCB0IFG & UCRXIFG));
-
-    // read the buffer
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
+    
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForRx();
     statusByte = UCB0RXBUF;
-
-    // wait for stop
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // return the status
+    waitForStop();
     return statusByte;
 }
 
@@ -1209,88 +1145,36 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeByte(uint8_t _familyByte, uint8_t _indexBy
     uint8_t statusByte;
 
     //// START A WRITE ////
-    UCB0I2CSA = this->_address;
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set to transmitter mode & start condition
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    // make sure we get a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    // set the buffer to family byte
     UCB0TXBUF = _familyByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to index byte
     UCB0TXBUF = _indexByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to write byte
     UCB0TXBUF = _writeByte;
-
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     // set buffer to first half of val (MSB)
     UCB0TXBUF = (uint8_t)(_val >> 8);
-
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     // set buffer to second half of val (LSB)
     UCB0TXBUF = (uint8_t)(_val & 0xFF);
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // send the stop signal
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait until stop condition
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // wait for 6 ms
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
     //// READ STATUS BYTE ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set uctr to 0 & start condition
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
-
-    // wait for a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait for transmit to complete and for stop to be true
-    while(!(UCB0IFG & UCRXIFG));
-
-    // read the buffer
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForRx();
     statusByte = UCB0RXBUF;
-
-    // wait for stop
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // return the status
+    waitForStop();
     return statusByte;
 }
 
@@ -1300,38 +1184,16 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeLongBytes(uint8_t _familyByte, uint8_t _in
     uint8_t statusByte;
 
     //// START A WRITE ////
-    UCB0I2CSA = this->_address;
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set to transmitter mode & start condition
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    // make sure we get a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    // set the buffer to family byte
     UCB0TXBUF = _familyByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to index byte
     UCB0TXBUF = _indexByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to write byte
     UCB0TXBUF = _writeByte;
-
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     for(size_t i = 0; i < _len; i++)
     {
@@ -1341,216 +1203,88 @@ uint8_t SparkFun_Bio_Sensor_Hub::writeLongBytes(uint8_t _familyByte, uint8_t _in
             UCB0TXBUF = (uint8_t)(_writeVal[i] >> shift_by);
 
             // wait for transmit interrupt
-            while(!(UCB0IFG & UCTXIFG));
+            waitForTx();
         }
     }
 
-    // send stop
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait until stop condition
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // wait for 6 ms
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
     //// READ STATUS BYTE ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set uctr to 0 & start condition
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
-
-    // wait for a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait for transmit to complete and for stop to be true
-    while(!(UCB0IFG & UCRXIFG));
-
-    // read the buffer
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForRx();
     statusByte = UCB0RXBUF;
-
-    // wait for stop
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // return the status
+    waitForStop();
     return statusByte;
 }
 
 // write an array of bytes
 uint8_t SparkFun_Bio_Sensor_Hub::writeBytes(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, uint8_t _writeVal[], const size_t _len)
 {
-
     uint8_t statusByte;
 
     //// START A WRITE ////
-    UCB0I2CSA = this->_address;
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set to transmitter mode & start condition
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    // make sure we get a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    // set the buffer to family byte
     UCB0TXBUF = _familyByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to index byte
     UCB0TXBUF = _indexByte;
+    waitForTx();
 
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set buffer to write byte
     UCB0TXBUF = _writeByte;
-
-    // wait for transmit interrupt
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     for(size_t i = 0; i != _len; i++)
     {
-        // set buffer to data byte
-        UCB0TXBUF = _writeVal[i];
-            
-        // wait for transmit interrupt
-        while(!(UCB0IFG & UCTXIFG));
+        UCB0TXBUF = _writeVal[i];   // set buffer to data byte
+        waitForTx();
     }
 
-    // send stop
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait until stop condition
-    while(UCB0CTLW0 & UCTXSTP);
-    
-    // wait for 6 ms
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
     //// READ STATUS BYTE ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set uctr to 0 & start condition
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
-
-    // wait for a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait for transmit to complete and for stop to be true
-    while(!(UCB0IFG & UCRXIFG));
-
-    // read the buffer
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForRx();
     statusByte = UCB0RXBUF;
-
-    // wait for stop
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // return the status
+    waitForStop();
     return statusByte;
 }
 
 // reads a status byte (or return byte) from the device
 uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByte)
 {
-    uint8_t returnByte;
-    uint8_t statusByte;
+    uint8_t returnByte, statusByte;
 
     //// START A WRITE ////
-    // set the address we transmit to
-    UCB0I2CSA = this->_address;
-
-    // set to transmitter mode & start condition (use |= to not reset the INIT)
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    // check to make sure we got a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK flag, then send err
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
     
-    // set the buffer to family byte
     UCB0TXBUF = _familyByte;
+    waitForTx();
 
-    // make sure we are good to send data (wait for transmit interrupt)
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set the buffer to index byte
     UCB0TXBUF = _indexByte;
+    waitForTx();
 
-    // make sure we are good to send data (wait for transmit interrupt)
-    while(!(UCB0IFG & UCTXIFG));
-
-    // send the stop signal, use |= to not overwrite anything unnecessary
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait until stop condition (we need a delay anyways)
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // wait for 6 ms
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
     //// START A READ ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set UCTR to 0 & start condition
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
-
-    // check to make sure we got a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK flag, then send err
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    // make sure we are good to read data (wait for receive interrupt)
-    while(!(UCB0IFG & UCRXIFG));
-
-    // set the status byte to the buffer data
-    statusByte = UCB0RXBUF;
-
-    // the next read will be the last, set the stop & use |= to not overwrite anything unnecessary
-    UCB0CTLW0 |= UCTXSTP;
-
-    // make sure we are good to read data (wait for receive interrupt)
-    while(!(UCB0IFG & UCRXIFG));
-    
-    // set the return byte to the buffer data
-    returnByte = UCB0RXBUF;
-    
-    // wait for stop to finish
-    while(UCB0CTLW0 & UCTXSTP);
+    waitForRx();
+    statusByte = UCB0RXBUF; // set status to buffer
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForRx();
+    returnByte = UCB0RXBUF; // set return to buffer
+    waitForStop();
 
     if (statusByte != SFE_BIO_SUCCESS) return statusByte;
     else return returnByte;
@@ -1559,86 +1293,33 @@ uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByt
 // similar to above, but we just add the write byte
 uint8_t SparkFun_Bio_Sensor_Hub::readByte(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte)
 {
-    uint8_t returnByte;
-    uint8_t statusByte;
+    uint8_t returnByte, statusByte;
 
     //// START A WRITE ////
-    // set the address we transmit to
-    UCB0I2CSA = this->_address;
-
-    // set to transmitter mode & start condition (use |= to not reset the INIT)
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    // check to make sure we got a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK flag, then send err
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
     
-    // set the buffer to family byte
     UCB0TXBUF = _familyByte;
+    waitForTx();
 
-    // make sure we are good to send data (wait for transmit interrupt)
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set the buffer to index byte
     UCB0TXBUF = _indexByte;
+    waitForTx();
 
-    // make sure we are good to send data (wait for transmit interrupt)
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set the buffer to write byte
     UCB0TXBUF = _writeByte;
-    
-    // make sure we are good to send data (wait for transmit interrupt)
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
-    // send the stop signal, use |= to not overwrite anything unnecessary
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait until stop condition (we need a delay anyways)
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // wait for 6 ms
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
     //// START A READ ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set UCTR to 0 & start condition
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
-
-    // check to make sure we got a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK flag, then send err
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    // make sure we are good to read data (wait for receive interrupt)
-    while(!(UCB0IFG & UCRXIFG));
-
-    // set the status byte to the buffer data
-    statusByte = UCB0RXBUF;
-
-    // the next read will be the last, set the stop & use |= to not overwrite anything unnecessary
-    UCB0CTLW0 |= UCTXSTP;
-
-    // make sure we are good to read data (wait for receive interrupt)
-    while(!(UCB0IFG & UCRXIFG));
-    
-    // set the return byte to the buffer data
-    returnByte = UCB0RXBUF;
-    
-    // wait for stop to finish
-    while(UCB0CTLW0 & UCTXSTP);
+    waitForRx();
+    statusByte = UCB0RXBUF; // set status to buffer
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForRx();
+    returnByte = UCB0RXBUF; // set return to buffer
+    waitForStop();
 
     if (statusByte != SFE_BIO_SUCCESS) return statusByte;
     else return returnByte;
@@ -1650,76 +1331,40 @@ uint16_t SparkFun_Bio_Sensor_Hub::readIntByte(uint8_t _familyByte, uint8_t _inde
     uint16_t returnByte;
     uint8_t statusByte;
 
-    UCB0I2CSA = this->_address;
-
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
+    //// START A WRITE ////
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
     UCB0TXBUF = _familyByte;
-
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     UCB0TXBUF = _indexByte;
-
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     UCB0TXBUF = _writeByte;
+    waitForTx();
 
-    while(!(UCB0IFG & UCTXIFG));
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    while(UCB0CTLW0 & UCTXSTP);
-
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
+    //// START A READ ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    while(!(UCB0IFG & UCRXIFG));
-
+    waitForRx();
     statusByte = UCB0RXBUF;
 
     if(statusByte != SFE_BIO_SUCCESS)
     {
-        UCB0CTLW0 |= UCTXSTP;
-
-        while(!(UCB0IFG & UCRXIFG));
-
-        uint8_t dummy = UCB0RXBUF;
-
-        while(UCB0CTLW0 & UCTXSTP);
-
+        transmitDummyByte();
         return statusByte;
     }
 
-    while(!(UCB0IFG & UCRXIFG));
-
-    returnByte = (uint16_t)(UCB0RXBUF << 8);
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    while(!(UCB0IFG & UCRXIFG));
-
-    returnByte |= UCB0RXBUF;
-
-    while(UCB0CTLW0 & UCTXSTP);
-    
+    waitForRx();
+    returnByte = (uint16_t)(UCB0RXBUF << 8);    // set half of return to buffer
+    UCB0CTLW0 |= UCTXSTP;                       // send the stop signal
+    waitForRx();
+    returnByte |= UCB0RXBUF;                    // set other half of return
+    waitForStop();
     return returnByte;
 }
 
@@ -1729,370 +1374,184 @@ uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t 
     uint8_t statusByte;
 
     //// START A WRITE ////
-    UCB0I2CSA = this->_address;
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set to transmitter mode & start condition
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    // check to make sure we got a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    // set buffer to family byte
     UCB0TXBUF = _familyByte;
+    waitForTx();
 
-    // wait for transmit to complete
-    while(!(UCB0IFG & UCTXIFG));
-
-    // set the buffer to index byte
     UCB0TXBUF = _indexByte;
+    waitForTx();
 
-    // wait for transmit to complete
-    while(!(UCB0IFG & UCTXIFG));
-
-    // send the stop signal
-    UCB0CTLW0 |= UCTXSTP;
-
-    // wait until stop condition is true
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // wait for 6 ms
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
     //// START A READ ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    // set UCTR to 0 & start condition
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
-
-    // check to make sure we got a response from the address
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        // stop transmission & reset NACK
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    // wait for receive interrupt
-    while(!(UCB0IFG & UCRXIFG));
-
-    // set status byte to the interrupt
+    waitForRx();
     statusByte = UCB0RXBUF;
-
-    // check the status byte
 
     if(statusByte != SFE_BIO_SUCCESS)
     {
-        // stop transmission
-        UCB0CTLW0 |= UCTXSTP;
-
-        // since we read the buffer, we automatically ACK'd for another buffer read
-        // flush the buffer
-        while(!(UCB0IFG & UCRXIFG));
-
-        // create a dummy value to read the buffer
-        uint8_t dummy = UCB0RXBUF;
-
-        // wait for stop
-        while(UCB0CTLW0 & UCTXSTP);
-
+        transmitDummyByte();
         return statusByte;
     }
 
     // loop for len indexes (i is set to size_t to match _len type)
     for(size_t i = 0; i != _len; i++)
     {
-        // send the stop when we are at the last index (ex: length of 3's last index is 2)
-        if(i == (_len - 1))
-        {
-            UCB0CTLW0 |= UCTXSTP;
-        }
-
-        // wait until we are good to read
-        while(!(UCB0IFG & UCRXIFG));
-
-        // set the array index to the buffer value
+        if(i == (_len - 1)) UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+        waitForRx();
         userArray[i] = UCB0RXBUF;
     }
 
-    // wait for stop to finish
-    while(UCB0CTLW0 & UCTXSTP);
-
-    // we already checked if status byte was good
+    waitForStop();
     return statusByte;
 }
 
 // same as above, but also adds a write byte
 uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, const size_t _len, uint8_t userArray[])
 {
-
     uint8_t statusByte;
 
-    // write the three bytes
-    UCB0I2CSA = this->_address;
-    
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
+    //// START A WRITE ////
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
     UCB0TXBUF = _familyByte;
-
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     UCB0TXBUF = _indexByte;
-
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     UCB0TXBUF = _writeByte;
+    waitForTx();
 
-    while(!(UCB0IFG & UCTXIFG));
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    while(UCB0CTLW0 & UCTXSTP);
-
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
+    //// START A READ ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    while(!(UCB0IFG & UCRXIFG));
-
+    waitForRx();
     statusByte = UCB0RXBUF;
 
     if(statusByte != SFE_BIO_SUCCESS)
     {
-        UCB0CTLW0 |= UCTXSTP;
-
-        while(!(UCB0IFG & UCRXIFG));
-
-        uint8_t dummy = UCB0RXBUF;
-
-        while(UCB0CTLW0 & UCTXSTP);
-
+        transmitDummyByte();
         return statusByte;
     }
     
     for (size_t i = 0; i != _len; i++)
     {
-        if(i == (_len - 1))
-        {
-            UCB0CTLW0 |= UCTXSTP;
-        }
-        // wait until we are good to read
-        while(!(UCB0IFG & UCRXIFG));
-
-        // set the array index to the buffer value
+        if(i == (_len - 1)) UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+        waitForRx();
         userArray[i] = UCB0RXBUF;
     }
     
-    while(UCB0CTLW0 & UCTXSTP);
-
+    waitForStop();
     return statusByte;
 }
 
 // same as above, but user array is of uint32_t
 uint8_t SparkFun_Bio_Sensor_Hub::readMultipleBytes(uint8_t _familyByte, uint8_t _indexByte, uint8_t _writeByte, const size_t _len, int32_t userArray[])
 {
-
     uint8_t statusByte;
 
-    // write the three bytes
-    UCB0I2CSA = this->_address;
-    
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
+    //// START A WRITE ////
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
     UCB0TXBUF = _familyByte;
-
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     UCB0TXBUF = _indexByte;
-
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     UCB0TXBUF = _writeByte;
+    waitForTx();
 
-    while(!(UCB0IFG & UCTXIFG));
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    while(UCB0CTLW0 & UCTXSTP);
-
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
+    //// START A READ ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    while(!(UCB0IFG & UCRXIFG));
-
+    waitForRx();
     statusByte = UCB0RXBUF;
 
     if(statusByte != SFE_BIO_SUCCESS)
     {
-        UCB0CTLW0 |= UCTXSTP;
-
-        while(!(UCB0IFG & UCRXIFG));
-
-        uint8_t dummy = UCB0RXBUF;
-
-        while(UCB0CTLW0 & UCTXSTP);
-
+        transmitDummyByte();
         return statusByte;
     }
     
     for (size_t i = 0; i != _len; i++)
     {
-        // we set to 0 to allow OR logic later
         userArray[i] = 0;
 
         for(int8_t shift_by = 24; shift_by != -8; shift_by -= 8)
         {
-            // send the stop condition
-            if(i == (_len - 1) && shift_by == 0)
-            {
-                UCB0CTLW0 |= UCTXSTP;
-            }
-            
-            while(!(UCB0IFG & UCRXIFG));
-
+            if(i == (_len - 1) && shift_by == 0) UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+            waitForRx();
             userArray[i] = ((uint32_t)UCB0RXBUF << shift_by);
         }
-
     }
     
-    while(UCB0CTLW0 & UCTXSTP);
-
+    waitForStop();
     return statusByte;
 }
 
 // write to an array passed through
 uint8_t SparkFun_Bio_Sensor_Hub::readFillArray(uint8_t _familyByte, uint8_t _indexByte, uint8_t arraySize, uint8_t array[])
 {
-
     if(arraySize == 0) return ERR_UNKNOWN;
 
     uint8_t statusByte;
 
-    UCB0I2CSA = this->_address;
-
-    UCB0CTLW0 |= UCTR | UCTXSTT;
-
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-    
+    //// START A WRITE ////
+    if(startWriteSequence(this->_address) != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
+   
     UCB0TXBUF = _familyByte;
-
-    while(!(UCB0IFG & UCTXIFG));
+    waitForTx();
 
     UCB0TXBUF = _indexByte;
+    waitForTx();
 
-    while(!(UCB0IFG & UCTXIFG));
-
-    UCB0CTLW0 |= UCTXSTP;
-
-    while(UCB0CTLW0 & UCTXSTP);
-
+    UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+    waitForStop();
     delay_ms(6);
 
-    // read response
-    UCB0CTLW0 &= ~UCTR;
-    UCB0CTLW0 |= UCTXSTT;
+    //// START A READ ////
+    if(startReadSequence() != SFE_BIO_SUCCESS) return ERR_TRY_AGAIN;
 
-    while(UCB0CTLW0 & UCTXSTT);
-    if(UCB0IFG & UCNACKIFG)
-    {
-        UCB0CTLW0 |= UCTXSTP;
-        UCB0IFG &= ~UCNACKIFG;
-        return ERR_TRY_AGAIN;
-    }
-
-    while(!(UCB0IFG & UCRXIFG));
-
+    waitForRx();
     statusByte = UCB0RXBUF;
 
     if(statusByte != SFE_BIO_SUCCESS)
     {
-        UCB0CTLW0 |= UCTXSTP;
-
-        while(!(UCB0IFG & UCRXIFG));
-
-        uint8_t dummy = UCB0RXBUF;
-
-        while(UCB0CTLW0 & UCTXSTP);
-
+        transmitDummyByte();
         return statusByte;
     }
 
     for (uint8_t i = 0; i != arraySize; i++)
     {
-        if (i == (arraySize - 1))
-        {
-            UCB0CTLW0 |= UCTXSTP;
-        }
-
-        while(!(UCB0IFG & UCRXIFG));
-        
+        if (i == (arraySize - 1)) UCB0CTLW0 |= UCTXSTP;   // send the stop signal
+        waitForRx();
         array[i] = UCB0RXBUF;
     }
 
-    while(UCB0CTLW0 & UCTXSTP);
-
+    waitForStop();
     return statusByte;
 }
 
 void delay_ms(uint16_t ms)
 {
-    // set up timer B0
-    // TBSSEL__ACLK for 32kHz clock
-    // MC__UP count up
-    // ID__1 clock divider = 1
-    TB0CTL = TBSSEL__ACLK | MC__UP | ID__1 | TBCLR;
+    // timer B0, 32kHz clock, count up, clock divider = 1
+    TB0CTL = (TBSSEL__ACLK | MC__UP | ID__1 | TBCLR);
 
-    // set the count value
-    // with a 32kHz clock, we do about 32 counts per ms
+    // set the count value, about 32 counts per ms
     TB0CCR0 = 33 * ms;
 
     // clear the timer interrupt
@@ -2111,8 +1570,7 @@ void delay_ms(uint16_t ms)
 #pragma vector = TIMER0_B0_VECTOR;
 __interrupt void Timer_B0_ISR(void)
 {
-    // wake CPU & exit low-power
-    __bic_SR_register_on_exit(LPM3_bits);
+    __bic_SR_register_on_exit(LPM3_bits); // wake CPU & exit low-power
 }
 
 // creating UART for debugging since printing doesn't seem to work
@@ -2121,7 +1579,7 @@ void initUART()
     // configure uart pins, 1.4 = TX & 1.5 = RX
     P1SEL0 |= BIT4 | BIT5;
 
-    // configure uart for 9600 baud
+    // configure uart for 115.2k baud
     UCA0CTLW0 |= UCSWRST;       // eUSCI in reset
     UCA0CTLW0 |= UCSSEL__SMCLK; // choose smclk
 
@@ -2200,7 +1658,7 @@ uint8_t runI2CScanner() {
             uart_write_string("\r\n");
 
             // stop communication & return
-            UCB0CTLW0 |= UCTXSTP;
+            UCB0CTLW0 |= UCTXSTP;   // send the stop signal
 
             uint32_t stopTimeout = 1000;
             while((UCB0CTLW0 & UCTXSTP) && --stopTimeout);
@@ -2216,7 +1674,7 @@ uint8_t runI2CScanner() {
             return 1;
         }
 
-        UCB0CTLW0 |= UCTXSTP;      // Always send STOP to release bus
+        UCB0CTLW0 |= UCTXSTP;   // send the stop signal      // Always send STOP to release bus
         while (UCB0CTLW0 & UCTXSTP);
         UCB0IFG &= ~UCNACKIFG;     // Clear NACK flag for next loop
     }
@@ -2303,14 +1761,14 @@ int main(void)
         uart_write_int(hubVer.revision);
         uart_write_string("\r\n");
 
-        uint8_t error = bioHub.configBpm(MODE_ONE);
+        uint8_t error = bioHub.configSensorBpm(MODE_ONE);
 
         if(error == SFE_BIO_SUCCESS) uart_write_string("Sensor Configured!\n");
         else uart_write_string("Error in configuring sensor.\n");
 
         while(1)
         {
-            body = bioHub.readBpm();
+            body = bioHub.readSensorBpm();
             uart_write_string("\n---- SENSOR READINGS ----\n");
             uart_write_string("Heartrate: ");
             uart_write_int(body.heartRate);
@@ -2323,6 +1781,9 @@ int main(void)
             uart_write_string("\n");
             uart_write_string("Status: ");
             uart_write_int(body.status);
+            uart_write_string("\n");
+            uart_write_string("Green LED: ");
+            uart_write_int(body.greenLed);
             uart_write_string("\n");
             uart_write_string("\n");
             delay_ms(2000); // slow down the output
