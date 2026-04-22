@@ -2,7 +2,7 @@
 #include <msp430fr2476.h>
 #include "sensor-library.h"
 #include "lcd_library.h"
-#include "new_rf_library.h"
+#include "rf_library.h"
 
 #define HEART_RATE true
 #define OXYGEN false

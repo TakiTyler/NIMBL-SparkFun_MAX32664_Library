@@ -23,7 +23,7 @@ Our custom system relies on the following primary hardware components:
 *   `sensor-library.h` / `sensor-library.cpp`: The core C++ driver for the MAX30101 and MAX32664. Handles initialization, I2C register configuration, application/bootloader mode switching, and data polling.
 *   *Dependencies:* 
     *   `lcd_library.h`: Handles the interface with the HT1621 display.
-    *   `new_rf_library.h`: Manages packet transmission and reception via the CC1101 radio module.
+    *   `rf_library.h`: Manages packet transmission and reception via the CC1101 radio module.
 
 ## Usage Example
 Below is a high-level look at how the sensor hub is initialized and read within the main application loop:
