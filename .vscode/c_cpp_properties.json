@@ -4,7 +4,7 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:\\ti\\ccs1281\\ccs\\ccs_base\\msp430\\include_gcc\\**",
+                // "C:\\ti\\ccs1281\\ccs\\ccs_base\\msp430\\include_gcc\\**",
                 "C:\\ti\\ccs1281\\ccs\\ccs_base\\msp430\\include\\**",
                 "C:\\ti\\ccs1281\\ccs\\tools\\compiler\\ti-cgt-msp430_21.6.1.LTS\\include\\**"
             ],
@@ -15,8 +15,12 @@
                 "__MSP430FR2476__",
                 "_FRWP_ENABLE",
                 "_INFO_FRWP_ENABLE",
+                "__asm__=asm",
                 "__interrupt=",
-                "__asm__=asm"
+                "__volatile__",
+                "_bis_SR_register(x)=",
+                "__bis_SR_register(x)=",
+                "__bic_SR_register_on_exit(x)="
             ],
             "windowsSdkVersion": "10.0.26100.0",
             "compilerPath": "C:/ti/ccs1281/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/bin/cl430.exe",

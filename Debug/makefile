@@ -10,7 +10,34 @@ GEN_OPTS__FLAG :=
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
+"./lcd_library.obj" \
+"./new_rf_library.obj" \
 "./sensor-library.obj" \
+"./driverlib/MSP430FR2xx_4xx/adc.obj" \
+"./driverlib/MSP430FR2xx_4xx/crc.obj" \
+"./driverlib/MSP430FR2xx_4xx/cs.obj" \
+"./driverlib/MSP430FR2xx_4xx/ecomp.obj" \
+"./driverlib/MSP430FR2xx_4xx/eusci_a_spi.obj" \
+"./driverlib/MSP430FR2xx_4xx/eusci_a_uart.obj" \
+"./driverlib/MSP430FR2xx_4xx/eusci_b_i2c.obj" \
+"./driverlib/MSP430FR2xx_4xx/eusci_b_spi.obj" \
+"./driverlib/MSP430FR2xx_4xx/framctl.obj" \
+"./driverlib/MSP430FR2xx_4xx/gpio.obj" \
+"./driverlib/MSP430FR2xx_4xx/icc.obj" \
+"./driverlib/MSP430FR2xx_4xx/lcd_e.obj" \
+"./driverlib/MSP430FR2xx_4xx/mpy32.obj" \
+"./driverlib/MSP430FR2xx_4xx/pmm.obj" \
+"./driverlib/MSP430FR2xx_4xx/rtc.obj" \
+"./driverlib/MSP430FR2xx_4xx/sac.obj" \
+"./driverlib/MSP430FR2xx_4xx/sfr.obj" \
+"./driverlib/MSP430FR2xx_4xx/sysctl.obj" \
+"./driverlib/MSP430FR2xx_4xx/tia.obj" \
+"./driverlib/MSP430FR2xx_4xx/timer_a.obj" \
+"./driverlib/MSP430FR2xx_4xx/timer_b.obj" \
+"./driverlib/MSP430FR2xx_4xx/tlv.obj" \
+"./driverlib/MSP430FR2xx_4xx/wdt_a.obj" \
+"./storage/rf_library.obj" \
+"./storage/sensor-library-debug.obj" \
 "../lnk_msp430fr2476.cmd" \
 $(GEN_CMDS__FLAG) \
 -lfrwp_init.a \
@@ -24,7 +51,11 @@ RMDIR := RMDIR /S/Q
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include subdir_vars.mk
+-include driverlib/MSP430FR2xx_4xx/subdir_vars.mk
+-include storage/subdir_vars.mk
 -include subdir_rules.mk
+-include driverlib/MSP430FR2xx_4xx/subdir_rules.mk
+-include storage/subdir_rules.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -142,8 +173,9 @@ nimbl_sparkfun_sensor_library.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "sensor-library.obj" 
-	-$(RM) "sensor-library.d" 
+	-$(RM) "lcd_library.obj" "new_rf_library.obj" "sensor-library.obj" "driverlib\MSP430FR2xx_4xx\adc.obj" "driverlib\MSP430FR2xx_4xx\crc.obj" "driverlib\MSP430FR2xx_4xx\cs.obj" "driverlib\MSP430FR2xx_4xx\ecomp.obj" "driverlib\MSP430FR2xx_4xx\eusci_a_spi.obj" "driverlib\MSP430FR2xx_4xx\eusci_a_uart.obj" "driverlib\MSP430FR2xx_4xx\eusci_b_i2c.obj" "driverlib\MSP430FR2xx_4xx\eusci_b_spi.obj" "driverlib\MSP430FR2xx_4xx\framctl.obj" "driverlib\MSP430FR2xx_4xx\gpio.obj" "driverlib\MSP430FR2xx_4xx\icc.obj" "driverlib\MSP430FR2xx_4xx\lcd_e.obj" "driverlib\MSP430FR2xx_4xx\mpy32.obj" "driverlib\MSP430FR2xx_4xx\pmm.obj" "driverlib\MSP430FR2xx_4xx\rtc.obj" "driverlib\MSP430FR2xx_4xx\sac.obj" "driverlib\MSP430FR2xx_4xx\sfr.obj" "driverlib\MSP430FR2xx_4xx\sysctl.obj" "driverlib\MSP430FR2xx_4xx\tia.obj" "driverlib\MSP430FR2xx_4xx\timer_a.obj" "driverlib\MSP430FR2xx_4xx\timer_b.obj" "driverlib\MSP430FR2xx_4xx\tlv.obj" "driverlib\MSP430FR2xx_4xx\wdt_a.obj" "storage\rf_library.obj" "storage\sensor-library-debug.obj" 
+	-$(RM) "driverlib\MSP430FR2xx_4xx\adc.d" "driverlib\MSP430FR2xx_4xx\crc.d" "driverlib\MSP430FR2xx_4xx\cs.d" "driverlib\MSP430FR2xx_4xx\ecomp.d" "driverlib\MSP430FR2xx_4xx\eusci_a_spi.d" "driverlib\MSP430FR2xx_4xx\eusci_a_uart.d" "driverlib\MSP430FR2xx_4xx\eusci_b_i2c.d" "driverlib\MSP430FR2xx_4xx\eusci_b_spi.d" "driverlib\MSP430FR2xx_4xx\framctl.d" "driverlib\MSP430FR2xx_4xx\gpio.d" "driverlib\MSP430FR2xx_4xx\icc.d" "driverlib\MSP430FR2xx_4xx\lcd_e.d" "driverlib\MSP430FR2xx_4xx\mpy32.d" "driverlib\MSP430FR2xx_4xx\pmm.d" "driverlib\MSP430FR2xx_4xx\rtc.d" "driverlib\MSP430FR2xx_4xx\sac.d" "driverlib\MSP430FR2xx_4xx\sfr.d" "driverlib\MSP430FR2xx_4xx\sysctl.d" "driverlib\MSP430FR2xx_4xx\tia.d" "driverlib\MSP430FR2xx_4xx\timer_a.d" "driverlib\MSP430FR2xx_4xx\timer_b.d" "driverlib\MSP430FR2xx_4xx\tlv.d" "driverlib\MSP430FR2xx_4xx\wdt_a.d" 
+	-$(RM) "lcd_library.d" "new_rf_library.d" "sensor-library.d" "storage\rf_library.d" "storage\sensor-library-debug.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
