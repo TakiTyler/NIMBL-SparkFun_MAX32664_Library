@@ -5,6 +5,13 @@ This repository contains the software libraries and driver implementations for a
 
 At the core of this software is the interface between a **TI MSP430FR2476** microcontroller and the **SparkFun MAX32664 Biometric Sensor Hub** (which utilizes the **MAX30101** Pulse Oximeter and Heart-Rate Sensor).
 
+## NIMBL Libraries
+
+*   [SparkFun_MAX32664_Library](https://github.com/TakiTyler/NIMBL-SparkFun_MAX32664_Library)
+*   [HT1621_LCD_Library](https://github.com/TakiTyler/NIMBL-HT1621_LCD_Library)
+*   [CC1101_RF_Library](https://github.com/TakiTyler/NIMBL-CC1101_RF_Library)
+*   [Website_and_Python](https://github.com/TakiTyler/NIMBL-Website_and_Python)
+
 ## Hardware Architecture
 Our custom system relies on the following primary hardware components:
 *   **Microcontroller:** Texas Instruments MSP430FR2476 (chosen for ultra-low power capabilities).
